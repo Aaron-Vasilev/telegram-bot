@@ -4,8 +4,12 @@ import (
 	"bot/src/actions/commands"
 	"bot/src/utils"
 	"fmt"
+	"log"
 	"os"
 	"time"
+
+	"database/sql"
+	_ "github.com/lib/pq"
 )
 
 func NewBot(token string) *commands.Bot {
@@ -17,6 +21,14 @@ func NewBot(token string) *commands.Bot {
 
 func main() {
 	utils.LoadEnv()
+
+	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+
+	if err = db.Ping(); err != nil {
+		log.Fatal("Error connecting to db", err)
+	}
+	defer db.Close()
+
 	bot := NewBot(os.Getenv("TOKEN"))
 
 	bot.IsDebug = os.Getenv("ENV") == "DEBUG"
@@ -25,7 +37,7 @@ func main() {
 	for {
 		updates := bot.GetUpdates()
 
-		commands.HandleUpdates(bot, updates)
+		commands.HandleUpdates(bot, db, updates)
 		time.Sleep(3000 * time.Millisecond)
 	}
 }
