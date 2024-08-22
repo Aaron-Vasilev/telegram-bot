@@ -1,7 +1,8 @@
 package main
 
 import (
-	"bot/src/actions/commands"
+	"bot/src/actions"
+	"bot/src/bot"
 	"bot/src/utils"
 	"fmt"
 	"log"
@@ -9,11 +10,12 @@ import (
 	"time"
 
 	"database/sql"
+
 	_ "github.com/lib/pq"
 )
 
-func NewBot(token string) *commands.Bot {
-	return &commands.Bot{
+func NewBot(token string) *bot.Bot {
+	return &bot.Bot{
 		Token: token,
 		Offset: 0,
 	}

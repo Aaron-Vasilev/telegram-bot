@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -40,7 +41,7 @@ func GenerateTimetable(lessons []t.Lesson, showId bool) t.Message {
 
 		button = append(button, t.InlineKeyboardButton{
 			Text: label,
-			CallbackData: label,
+			CallbackData: fmt.Sprintf("%sT%s", strings.Replace(date, "/", "-", -1), time),
 		})
 		buttons = append(buttons, button)
 	}

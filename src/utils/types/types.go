@@ -25,7 +25,7 @@ type Lesson struct {
 }
 
 type LessonWithUsers struct {
-	Lesson
+	User
 	LessonID   int    `json:"lessonId"`
 	Registered []User `json:"registered"`
 }
