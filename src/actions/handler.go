@@ -6,7 +6,6 @@ import (
 	"bot/src/utils"
 	t "bot/src/utils/types"
 	"database/sql"
-	"fmt"
 	"regexp"
 )
 
@@ -19,7 +18,7 @@ func sendTimetable(bot *bot.Bot, db *sql.DB, upd t.Update) {
 	bot.SendMessage(msg)
 }
 
-func sendKeyboard(bot *bot.Bot, text string) {
+func sendKeyboard(bot *bot.Bot, chatId int64, text string) {
 	replyKeyboard := t.ReplyKeyboardMarkup{
 		Keyboard: [][]t.KeyboardButton{ 
 			{
@@ -44,7 +43,7 @@ func sendKeyboard(bot *bot.Bot, text string) {
 
 	msg := t.Message {
 		Text: text,
-		ChatId: 362575139,
+		ChatId: chatId,
 		ReplyMarkup: &replyKeyboard,
 	}
 
@@ -53,16 +52,26 @@ func sendKeyboard(bot *bot.Bot, text string) {
 
 func sendLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
 	lesson := controller.GetLessonWithUsers(db, u.CallbackQuery.Data)
-	fmt.Println("✡️  line 54 lesson", lesson)
 
+	msg := utils.GenerateLessonMessage(lesson, u.FromChat().ID)
+
+	bot.SendMessage(msg)
+}
+
+func registerForLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
+	text := controller.ToggleUserInLesson(db, u)
+	bot.SendText(u.FromChat().ID, text)
 }
 
 func handleCallbackQuery(bot *bot.Bot, db *sql.DB, u t.Update) {
 	data := u.CallbackQuery.Data
-	timetableRe := regexp.MustCompile(`^\d{2}-\d{2}T\d{2}:\d{2}$`)
+	timetableRe := regexp.MustCompile(`^SHOW_LESSON=\d+$`)
+	lessonRe := regexp.MustCompile(`^(REGISTER|UNREGISTER)=\d+$`)
 
 	if timetableRe.MatchString(data) {
 		sendLesson(bot, db, u)
+	} else if lessonRe.MatchString(data) {
+		registerForLesson(bot, db, u)
 	}
 
 }

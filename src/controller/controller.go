@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 )
 
 func GetAvaliableLessons(db *sql.DB) []t.Lesson {
@@ -18,7 +17,11 @@ func GetAvaliableLessons(db *sql.DB) []t.Lesson {
 		for rows.Next() {
 			var l t.Lesson
 
-			rows.Scan(&l.ID, &l.Date, &l.Time, &l.Description, &l.Max)
+			err := rows.Scan(&l.Id, &l.Date, &l.Time, &l.Description, &l.Max)
+
+			if err != nil {
+				fmt.Println("✡️  line 22 err", err)
+			}
 
 			lessons = append(lessons, l)
 		}
@@ -28,26 +31,67 @@ func GetAvaliableLessons(db *sql.DB) []t.Lesson {
 	return lessons
 }
 
-type getLessonWithUsersRes struct {
-	Data t.LessonWithUsers `json:"get_lesson"`
+func GetLessonWithUsers(db *sql.DB, callBackData string) []t.LessonWithUsers {
+	var lessons []t.LessonWithUsers 
+	query := "SELECT u.id, username, name, emoji, l.id, time, date, description, max" + 
+	" FROM yoga.lesson l" + 
+	" LEFT JOIN yoga.registered_users r ON l.id = r.lesson_id" +
+	" LEFT JOIN yoga.user u ON u.id = ANY(r.registered)" +
+	" WHERE l.id=$1;"
+
+	data := strings.Split(callBackData, "=")
+
+	rows, err := db.Query(query, data[1])
+
+	if err == nil {
+		for rows.Next() {
+			var l t.LessonWithUsers
+
+			err := rows.Scan(
+				&l.UserId, &l.Username, &l.Name, &l.Emoji,
+				&l.LessonId, &l.Time, &l.Date, &l.Description, &l.Max,
+				)
+			
+			if err != nil {
+				fmt.Println("✡️  line 51 err", err)
+			}
+
+			lessons = append(lessons, l)
+		}
+	}
+	defer rows.Close()
+
+	return lessons
 }
 
-func GetLessonWithUsers(db *sql.DB, s string) t.LessonWithUsers {
-	var res getLessonWithUsersRes
-	query := "select lesson_id, id, username, name, emoji from yoga.registered_users r join yoga.user u on u.id = any(r.registered) where lesson_id = 21;"
-	data := strings.Split(s, "T")
-	currTime := time.Now()
+func ToggleUserInLesson(db *sql.DB, u t.Update) string {
+	text := ""
+	data := strings.Split(u.CallbackQuery.Data, "=")
+	action := data[0]
+	lessonId := data[1]
 
-	date := fmt.Sprintf("%s-%s", data[0], currTime.Format("2006"))
-	time := data[1]
+	switch action {
+	case "REGISTER":
+		query := "UPDATE yoga.registered_users" +
+		" SET registered = array_append(registered, $1)" +
+		" WHERE lesson_id=$2 AND NOT ($1=ANY(registered));"
 
-	row, err := db.Query(query, date, time)
-	fmt.Println("✡️  line 45 err", err)
+		db.Exec(query, u.CallbackQuery.From.ID, lessonId)
 
-	for row.Next() {
-		err = row.Scan(&res.Data)
-		fmt.Println("✡️  line 48 err", err)
+		text = "See you in the session✨"
+	case "UNREGISTER":
+		query := "UPDATE yoga.registered_users" +
+		" SET registered = array_remove(registered, $1)" +
+		" WHERE lesson_id=$2 AND NOT ($1=ANY(registered));"
+
+		db.Exec(query, u.CallbackQuery.From.ID, lessonId)
+
+		text = "You are free, fatass...🌚"
 	}
 
-	return res.Data
+	return text
+}
+
+func CreateLesson(){ 
+	//TODO don't forget to add a row into registered_users
 }

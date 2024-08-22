@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -41,7 +40,7 @@ func GenerateTimetable(lessons []t.Lesson, showId bool) t.Message {
 
 		button = append(button, t.InlineKeyboardButton{
 			Text: label,
-			CallbackData: fmt.Sprintf("%sT%s", strings.Replace(date, "/", "-", -1), time),
+			CallbackData: fmt.Sprintf("SHOW_LESSON=%d", l.Id),
 		})
 		buttons = append(buttons, button)
 	}
@@ -58,6 +57,71 @@ func GenerateTimetable(lessons []t.Lesson, showId bool) t.Message {
 			},
 		}
 	}
+}
+
+func GenerateLessonMessage(lessons []t.LessonWithUsers, userId int64) t.Message {
+	var msg t.Message
+	var buttons [][]t.InlineKeyboardButton
+	var button []t.InlineKeyboardButton
+	weekday := lessons[0].Date.Format("Mon")
+	date := lessons[0].Date.Format("02/01")
+	time := lessons[0].Time.Format("15:04")
+	description := lessons[0].Description
+	isUserInLesson := false
+
+	for _, l := range lessons {
+		if l.UserId != nil && *l.UserId == userId {
+			isUserInLesson = true
+			break
+		}
+	}
+
+	if isUserInLesson {
+		button = append(button, t.InlineKeyboardButton{
+			Text: "Unregister from the lesson",
+			CallbackData: fmt.Sprintf("UNREGISTER=%d", lessons[0].LessonId),
+		})
+	} else {
+		button = append(button, t.InlineKeyboardButton{
+			Text: "Register for the lesson",
+			CallbackData: fmt.Sprintf("REGISTER=%d", lessons[0].LessonId),
+		})
+	}
+	buttons = append(buttons, button)
+
+	msg.ChatId = userId
+	msg.Text = fmt.Sprintf(
+		"%s 🚀 %s 🚀 %s 🕒\n%s\n\n%s",
+		weekday, date, time, description, yogis(lessons),
+		)
+	msg.ParseMode = "html"
+	msg.ReplyMarkup = t.InlineKeyboardMarkup{
+		InlineKeyboard: buttons,
+	}
+
+	return msg
+}
+
+func yogis(lessons []t.LessonWithUsers) string {
+	registered := 0
+	students := ""
+
+	if lessons[0].UserId != nil {
+		for i, l := range lessons {
+			name := *l.Name
+
+			if l.Username != nil {
+				name = "@" + *l.Username
+			}
+
+			students += fmt.Sprintf("\n%d. %s", i + 1, name)
+			registered++
+		}
+	}
+
+	yogs := fmt.Sprintf("Booked: <b>%d</b>/%d", registered, lessons[0].Max)
+
+	return yogs + students
 }
 
 func BeautyDate(date time.Time) string {

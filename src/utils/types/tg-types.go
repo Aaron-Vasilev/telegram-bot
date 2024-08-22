@@ -375,6 +375,8 @@ type Message struct {
 	ChatId int64 `json:"chat_id"`
 	// MessageID is a unique message identifier inside this chat
 	MessageID int `json:"message_id"`
+	// optional
+	ParseMode string `json:"parse_mode,omitempty"`
 	// From is a sender, empty for messages sent to channels;
 	//
 	// optional

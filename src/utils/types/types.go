@@ -10,22 +10,27 @@ type CustomError struct {
 }
 
 type UserDB struct {
-  Id        int64  `json:"id"`
-  Name      string `json:"name"`
-  Username *string `json:"username,omitempty"`
-  Emoji     string `json:"emoji"`
+	Id        int64 
+	Name      string
+	Username *string
+	Emoji     string
 }
-
 type Lesson struct {
-	ID          int       `json:"id"`
-	Date        time.Time `json:"date"`
-	Time        time.Time `json:"time"`
-	Description string    `json:"description"`
-	Max         int       `json:"max"`
+	Id          int      
+	Date        time.Time
+	Time        time.Time
+	Description string   
+	Max         int      
 }
 
 type LessonWithUsers struct {
-	User
-	LessonID   int    `json:"lessonId"`
-	Registered []User `json:"registered"`
+	UserId     *int64 
+	Name       *string
+	Username   *string
+	Emoji      *string
+	LessonId    int
+	Date        time.Time
+	Time        time.Time
+	Description string   
+	Max         int      
 }
