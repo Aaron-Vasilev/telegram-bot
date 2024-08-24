@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 )
 
@@ -37,6 +38,20 @@ func (bot *Bot) SendText(chatId int64, text string) {
 	}
 
 	Send(bot, "/sendMessage", msg)
+}
+
+func (bot *Bot) Error(text string) {
+	if bot.IsDebug {
+		fmt.Fprintf(os.Stdout, "\033[0;31m Error \033[0m %s", text)
+	} else {
+		userId, err := strconv.ParseInt(os.Getenv("ERROR_CHAT_ID"), 10, 64)
+
+		if err == nil {
+			fmt.Println("No ERROR_CHAT_ID")
+		} else {
+			bot.SendText(userId, text)
+		}
+	}
 }
 
 func Send(bot *Bot, method string, msg t.Message) t.Message {

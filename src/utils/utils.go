@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -152,4 +154,58 @@ func GenerateKeyboard() *t.ReplyKeyboardMarkup {
 	}
 
 	return &replyKeyboard
+}
+
+func IsAdmin(id int64) bool {
+	adminsStr := os.Getenv("ADMIN")
+
+	admins := strings.Split(adminsStr, ",")
+
+	for _, adminStr := range(admins) {
+
+		admin, err := strconv.ParseInt(adminStr, 10, 64)
+
+		if err == nil && admin == id {
+			return true
+		}
+	}
+
+	return false
+}
+
+func UserIdFromUpdate(u t.Update) (int64, bool) {
+	var userId int64
+	updateWithCallbackQuery := u.CallbackQuery != nil
+
+	if updateWithCallbackQuery {
+		userId = u.CallbackQuery.From.ID
+	} else if u.Message != nil {
+		userId = u.Message.From.ID
+	}
+
+	return userId, updateWithCallbackQuery 
+}
+
+
+func UpdateMembership(memb *t.Membership, token t.Token) {
+	if memb.Ends.After(token.Created) {
+		membershipLasts := 28
+
+		memb.Ends = memb.Ends.AddDate(0, 0, membershipLasts)
+	} else {
+		daysRemaining := 27
+
+		memb.LessonsAvailable = 0
+		memb.Starts = token.Created
+		memb.Ends = token.Created.AddDate(0, 0, daysRemaining)
+	}
+
+	if token.Type == 1 {
+		memb.LessonsAvailable += 4 
+	} else if token.Type == 2 {
+		memb.LessonsAvailable += 8 
+	} else if token.Type == 8 {
+		memb.LessonsAvailable = 0
+	}
+	memb.Type = token.Type
 }

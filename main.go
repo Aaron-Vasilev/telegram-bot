@@ -1,9 +1,10 @@
 package main
 
 import (
-	"bot/src/actions"
 	"bot/src/bot"
+	"bot/src/handler"
 	"bot/src/utils"
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -35,11 +36,14 @@ func main() {
 
 	bot.IsDebug = os.Getenv("ENV") == "DEBUG"
 
+	ctx := context.Background()
+	defer ctx.Done()
+
 	fmt.Println("Launch!")
 	for {
 		updates := bot.GetUpdates()
 
-		commands.HandleUpdates(bot, db, updates)
+		ctx = handler.HandleUpdates(ctx, bot, db, updates)
 		time.Sleep(3000 * time.Millisecond)
 	}
 }

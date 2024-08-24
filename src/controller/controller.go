@@ -1,10 +1,14 @@
 package controller
 
 import (
+	"bot/src/utils"
 	t "bot/src/utils/types"
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 func GetAvaliableLessons(db *sql.DB) []t.Lesson {
@@ -94,4 +98,18 @@ func ToggleUserInLesson(db *sql.DB, u t.Update) string {
 
 func CreateLesson(){ 
 	//TODO don't forget to add a row into registered_users
+}
+
+func CreateToken(db *sql.DB, tokenType string) string {
+	uuid := uuid.New()
+	created := time.Now()
+	query := "INSERT INTO yoga.token (id, type, created, valid) VALUES ($1,$2,$3,$4);"
+	
+	_, err := db.Query(query, uuid, tokenType, created, true)
+
+	if err == nil {
+		return uuid.String()
+	} else {
+		return utils.Wrong
+	}
 }
