@@ -12,13 +12,13 @@ type CustomError struct {
 }
 
 type UserDB struct {
-	Id        int64 
+	ID        int64 
 	Name      string
-	Username *string
+	Username  string
 	Emoji     string
 }
 type Lesson struct {
-	Id          int      
+	ID          int      
 	Date        time.Time
 	Time        time.Time
 	Description string   
@@ -43,6 +43,14 @@ type Membership struct {
 	Ends             time.Time
 	Type             int
 	LessonsAvailable int
+}
+
+type UserMembership struct {
+	User UserDB
+	Starts           *time.Time
+	Ends             *time.Time
+	Type             *int
+	LessonsAvailable *int
 }
 
 type Token struct {

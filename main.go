@@ -3,8 +3,8 @@ package main
 import (
 	"bot/src/bot"
 	"bot/src/handler"
+	"bot/src/scene"
 	"bot/src/utils"
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -35,15 +35,25 @@ func main() {
 	bot := NewBot(os.Getenv("TOKEN"))
 
 	bot.IsDebug = os.Getenv("ENV") == "DEBUG"
+	ctx := scene.NewSceneContext()
 
-	ctx := context.Background()
-	defer ctx.Done()
+	ctx.SetValue(111, scene.SceneState{
+		Scene: "lollul",
+		Stage: 0,
+	})
 
 	fmt.Println("Launch!")
+	defer func() {
+		if r := recover(); r != nil {
+			var r interface{} = "this is a string"
+
+			bot.Error("Panic! " + r.(string))
+		}
+	}()
 	for {
 		updates := bot.GetUpdates()
 
-		ctx = handler.HandleUpdates(ctx, bot, db, updates)
+		handler.HandleUpdates(&ctx, bot, db, updates)
 		time.Sleep(3000 * time.Millisecond)
 	}
 }

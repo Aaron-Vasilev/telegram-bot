@@ -21,7 +21,7 @@ func GetAvaliableLessons(db *sql.DB) []t.Lesson {
 		for rows.Next() {
 			var l t.Lesson
 
-			err := rows.Scan(&l.Id, &l.Date, &l.Time, &l.Description, &l.Max)
+			err := rows.Scan(&l.ID, &l.Date, &l.Time, &l.Description, &l.Max)
 
 			if err != nil {
 				fmt.Println("✡️  line 22 err", err)
@@ -110,6 +110,98 @@ func CreateToken(db *sql.DB, tokenType string) string {
 	if err == nil {
 		return uuid.String()
 	} else {
-		return utils.Wrong
+		return utils.WrongMsg
 	}
+}
+
+func SaveUser(db *sql.DB, id int64, username string, name string) {
+	query := `
+	INSERT INTO yoga.user (id, username, name) VALUES ($1, $2, $3)
+	ON CONFLICT(id) DO UPDATE SET
+	username = EXCLUDED.username, name = EXCLUDED.name;`
+	
+	db.Query(query, id, username, name)
+	//Notification for a Teacher if the user is new
+}
+
+func GetUserWithMembership(db *sql.DB, userId int64) t.UserMembership {
+	var u t.UserMembership
+	query := `
+	SELECT u.id, username, name, emoji, starts, ends, type, lessons_avaliable
+	FROM yoga.user u LEFT JOIN yoga.membership m ON u.id = m.user_id WHERE u.id=$1;`
+
+	db.QueryRow(query, userId).Scan(
+		&u.User.ID, &u.User.Username, &u.User.Name, &u.User.Emoji,
+		&u.Starts, &u.Ends, &u.Type, &u.LessonsAvailable,
+		)
+
+	return u
+}
+
+func UpdateEmoji(db *sql.DB, userId int64, emoji string) {
+	query := `UPDATE yoga.user SET emoji=$1 WHERE id=$2`
+
+	db.Exec(query, emoji, userId)
+}
+
+func AddLesson(db *sql.DB, l utils.ValidatedLesson) {
+	query := `INSERT INTO yoga.lesson (date, time, description, max) 
+	VALUES ($1, $2, $3, $4) RETURNING id;`
+	var id int
+
+	db.QueryRow(query, l.Date, l.Time, l.Description, l.Max).Scan(&id)
+
+	query = `INSERT INTO yoga.registered_users (lesson_id, registered) VALUES ($1, $2);`
+
+	db.Exec(query, id, []int{})
+}
+
+func FindUsersByName(db *sql.DB, name string) []t.UserDB {
+	var users []t.UserDB
+	query := `SELECT * FROM yoga.user WHERE name LIKE '%' || $1 || '%' OR username LIKE '%' || $1 || '%';`
+
+	rows, err := db.Query(query, name)
+
+	if err == nil {
+		for rows.Next() {
+			var u t.UserDB
+
+			err := rows.Scan(&u.ID, &u.Username, &u.Name, &u.Emoji)
+
+			if err != nil {
+				fmt.Println("✡️  line 171 err", err)
+			}
+
+			users = append(users, u)
+		}
+	}
+	defer rows.Close()
+
+	return users
+}
+
+func UpdateMembership(db *sql.DB, userId int64, memType int) t.Membership {
+	var m t.Membership
+	token := t.Token{
+	Created: time.Now(),
+	Type: memType,
+	}
+
+	query := `SELECT * FROM yoga.membership WHERE user_id=$1;`
+	err := db.QueryRow(query, userId).Scan(&m.UserID, &m.Starts, &m.Ends, &m.Type, &m.LessonsAvailable)
+
+	if err == sql.ErrNoRows {
+		tmp := "2023-01-01"
+		db.Exec(`INSERT INTO yoga.membership (user_id, starts, ends, type, lessons_avaliable)
+		VALUES ($1,$2,$3,$4,$5);`, userId, tmp, tmp, 0, 0)
+	}
+
+	utils.UpdateMembership(&m, token)
+
+	query = `UPDATE yoga.membership 
+	SET type=$1, starts=$2, ends=$3, lessons_avaliable=$4 WHERE user_id=$5;`
+
+	db.QueryRow(query, m.Type, m.Starts, m.Ends, m.LessonsAvailable, userId)
+
+	return m
 }

@@ -18,12 +18,54 @@ func SendTimetable(bot *bot.Bot, db *sql.DB, upd t.Update) {
 	bot.SendMessage(msg)
 }
 
+func SendContact(bot *bot.Bot, u t.Update) {
+	bot.SendMessage(t.Message{
+		ChatId: u.FromChat().ID,
+		Text: utils.ContactMsg,
+		ParseMode: "html",
+	})
+}
+
+func SendProfile(bot *bot.Bot, db *sql.DB, u t.Update) {
+	userWithMem := controller.GetUserWithMembership(db, u.FromChat().ID)
+
+	buttons := [][]t.InlineKeyboardButton{
+		{
+			{
+				Text: utils.ChangeEmoji,
+				CallbackData: utils.ChangeEmoji,
+			},
+		},
+	}
+
+	msg := t.Message {
+		ChatId: u.FromChat().ID,
+		Text: utils.ProfileText(userWithMem),
+		ParseMode: "html",
+		ReplyMarkup: t.InlineKeyboardMarkup{
+			InlineKeyboard: buttons,
+		},
+	}
+
+	bot.SendMessage(msg)
+}
+
 func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 	replyKeyboard := t.ReplyKeyboardMarkup{
 		Keyboard: [][]t.KeyboardButton{ 
 			{
 				{
 					Text: utils.AdminKeyboard[utils.GenerateToken],
+				},
+			},
+			{
+				{
+					Text: utils.AdminKeyboard[utils.AddLessons],
+				},
+			},
+			{
+				{
+					Text: utils.AdminKeyboard[utils.AssignMembership],
 				},
 			},
 		},

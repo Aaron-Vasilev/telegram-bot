@@ -3,53 +3,85 @@ package handler
 import (
 	"bot/src/action"
 	"bot/src/bot"
+	"bot/src/controller"
 	"bot/src/scene"
 	"bot/src/utils"
 	t "bot/src/utils/types"
-	"context"
 	"database/sql"
+	"fmt"
 	"regexp"
+	"strings"
 )
 
-func handleCallbackQuery(bot *bot.Bot, db *sql.DB, u t.Update) {
-	data := u.CallbackQuery.Data
+func handleCallbackQuery(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+	data := u.CallbackData()
 	timetableRe := regexp.MustCompile(`^SHOW_LESSON=\d+$`)
 	lessonRe := regexp.MustCompile(`^(REGISTER|UNREGISTER)=\d+$`)
 
-	if timetableRe.MatchString(data) {
+	if data == utils.ChangeEmoji {
+		ctx.Start(u.FromChat().ID, utils.ChangeEmoji)
+
+		scene.ChangeEmoji(ctx, bot, db, u)
+	} else if timetableRe.MatchString(data) {
 		action.SendLesson(bot, db, u)
 	} else if lessonRe.MatchString(data) {
 		action.RegisterForLesson(bot, db, u)
 	}
 }
 
-func handleScene(ctx context.Context, bot *bot.Bot, db *sql.DB, u t.Update) context.Context {
-	userId, _ := utils.UserIdFromUpdate(u) 
-
-	state, _ := ctx.Value(userId).(scene.SceneState)
+func handleScene(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+	state, _ := ctx.GetValue(u.FromChat().ID)
 
 	switch  state.Scene {
 	case utils.GenerateToken: 
-		return scene.GenTokenScene(ctx, bot, db, u)
-	default: 
-		return ctx
+		scene.GenTokenScene(ctx, bot, db, u)
+	case utils.ChangeEmoji: 
+		scene.ChangeEmoji(ctx, bot, db, u)
+	case utils.AddLessons: 
+		scene.AddLessons(ctx, bot, db, u)
+	case utils.AssignMembership: 
+		scene.AssignMembership(ctx, bot, db, u)
 	}
 }
 
-func handleAdminCmd(ctx context.Context, bot *bot.Bot, db *sql.DB, u t.Update) context.Context {
+func handleAdminCmd(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	switch u.Message.Text {
 	case "ADMIN": 
 		action.SendAdminKeyboard(bot, u.Message.From.ID)
+	case "USER":
+		action.SendKeyboard(bot, u.Message.From.ID, "User Keyboard")
 	case utils.GenerateToken:
-		sceneCtx := context.WithValue(ctx, u.Message.From.ID, scene.SceneState{
+		ctx.SetValue(u.Message.From.ID, scene.SceneState{
 			Scene: utils.GenerateToken,
 			Stage: 1,
 		})
 
-		return scene.GenTokenScene(sceneCtx, bot, db, u)
-	}
+		scene.GenTokenScene(ctx, bot, db, u)
+	case utils.AddLessons: 
+		ctx.SetValue(u.Message.From.ID, scene.SceneState{
+			Scene: utils.AddLessons,
+			Stage: 1,
+		})
 
-	return ctx
+		scene.AddLessons(ctx, bot, db, u)
+	case utils.AssignMembership: 
+		ctx.SetValue(u.Message.From.ID, scene.SceneState{
+			Scene: utils.AssignMembership,
+			Stage: 1,
+		})
+
+		scene.AssignMembership(ctx, bot, db, u)
+	}
+}
+
+func handleMenu(bot *bot.Bot, db *sql.DB, u t.Update) {
+	if u.FromChat() == nil {
+		user := u.MyChatMember.From
+		name := strings.Trim(fmt.Sprintf("%s %s", user.FirstName, user.LastName), " ")
+
+		controller.SaveUser(db, user.ID, user.UserName, name)
+		action.SendKeyboard(bot, user.ID, utils.GreetingMsg)
+	}
 }
 
 func handleKeyboard(bot *bot.Bot, db *sql.DB, u t.Update) {
@@ -59,48 +91,40 @@ func handleKeyboard(bot *bot.Bot, db *sql.DB, u t.Update) {
 	case utils.Timetable: 
 		action.SendTimetable(bot, db, u)
 	case utils.Leaderboard: 
-// 		action.SendTimetable(bot, db, u)
+	    bot.SendText(u.FromChat().ID, "Work is in progress🛠️")
 	case utils.Profile: 
-// 		action.SendTimetable(bot, db, u)
+		action.SendProfile(bot, db, u)
 	case utils.Contact: 
-// 		action.SendTimetable(bot, db, u)
+		action.SendContact(bot, u)
 	}
 }
 
-func handleUpdates(ctx context.Context, bot *bot.Bot, db *sql.DB, u t.Update) context.Context {
-	if u.CallbackQuery == nil && u.Message == nil {
-// 		handleMenu()
-		action.SendKeyboard(bot, u.MyChatMember.From.ID, utils.Greeting)
+func handleUpdates(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+	if u.FromChat() == nil || (u.Message != nil && strings.HasPrefix(u.Message.Text, "/")) {
+		handleMenu(bot, db, u)
 
-		return ctx
+		return 
 	}
 
 	userId, updateWithCallbackQuery := utils.UserIdFromUpdate(u) 
 
-	_, ok := ctx.Value(userId).(scene.SceneState)
+	_, ok := ctx.GetValue(userId)
 
 	if ok {
 		handleScene(ctx, bot, db, u)
 	} else if updateWithCallbackQuery {
-		handleCallbackQuery(bot, db, u)
+		handleCallbackQuery(ctx, bot, db, u)
 	} else if _, exists := utils.Keyboard[u.Message.Text]; exists {
 		handleKeyboard(bot, db, u)
 	} else if utils.IsAdmin(userId) {
-		return handleAdminCmd(ctx, bot, db, u)
+		handleAdminCmd(ctx, bot, db, u)
 	}
-
-	return ctx
 }
 
-func HandleUpdates(c context.Context, bot *bot.Bot, db *sql.DB, updates []t.Update) context.Context {
+func HandleUpdates(c *scene.Ctx, bot *bot.Bot, db *sql.DB, updates []t.Update) {
 	for _, update := range updates {
-		ctx := handleUpdates(c, bot, db, update)
+		handleUpdates(c, bot, db, update)
 
 		bot.Offset = update.UpdateID + 1
-
-		return ctx
 	}
-
-	return c
 }
-
