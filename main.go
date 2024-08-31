@@ -17,7 +17,7 @@ import (
 
 func NewBot(token string) *bot.Bot {
 	return &bot.Bot{
-		Token: token,
+		Token:  token,
 		Offset: 0,
 	}
 }

@@ -1,15 +1,15 @@
 package t
 
 import (
-	"math/big"
 	"encoding/json"
+	"math/big"
 	"strings"
 	"time"
 )
 
 type Response[T any] struct {
-	Ok bool `json:"ok"`
-	Result T `json:"result"`
+	Ok          bool                `json:"ok"`
+	Result      T                   `json:"result"`
 	ErrorCode   int                 `json:"error_code,omitempty"`
 	Description string              `json:"description,omitempty"`
 	Parameters  *ResponseParameters `json:"parameters,omitempty"`
@@ -644,7 +644,7 @@ type Message struct {
 	// login_url buttons are represented as ordinary url buttons.
 	//
 	// optional
-	ReplyMarkup  interface{} `json:"reply_markup,omitempty"`
+	ReplyMarkup interface{} `json:"reply_markup,omitempty"`
 }
 
 // Time converts the message timestamp into a Time.
@@ -1867,7 +1867,7 @@ type BaseInputMedia struct {
 	// pass an HTTP URL for Telegram to get a file from the Internet,
 	// or pass “attach://<file_attach_name>” to upload a new one
 	// using multipart/form-data under <file_attach_name> name.
-// 	Media RequestFileData `json:"media"`
+	// 	Media RequestFileData `json:"media"`
 	// thumb intentionally missing as it is not currently compatible
 
 	// Caption of the video to be sent, 0-1024 characters after entities parsing.
@@ -1899,7 +1899,7 @@ type InputMediaVideo struct {
 	// the file is supported server-side.
 	//
 	// optional
-// 	Thumb RequestFileData `json:"thumb,omitempty"`
+	// 	Thumb RequestFileData `json:"thumb,omitempty"`
 	// Width video width
 	//
 	// optional
@@ -1925,7 +1925,7 @@ type InputMediaAnimation struct {
 	// the file is supported server-side.
 	//
 	// optional
-// 	Thumb RequestFileData `json:"thumb,omitempty"`
+	// 	Thumb RequestFileData `json:"thumb,omitempty"`
 	// Width video width
 	//
 	// optional
@@ -1947,7 +1947,7 @@ type InputMediaAudio struct {
 	// the file is supported server-side.
 	//
 	// optional
-// 	Thumb RequestFileData `json:"thumb,omitempty"`
+	// 	Thumb RequestFileData `json:"thumb,omitempty"`
 	// Duration of the audio in seconds
 	//
 	// optional
@@ -1969,7 +1969,7 @@ type InputMediaDocument struct {
 	// the file is supported server-side.
 	//
 	// optional
-// 	Thumb RequestFileData `json:"thumb,omitempty"`
+	// 	Thumb RequestFileData `json:"thumb,omitempty"`
 	// DisableContentTypeDetection disables automatic server-side content type
 	// detection for files uploaded using multipart/form-data. Always true, if
 	// the document is sent as part of an album

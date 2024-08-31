@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 func GetAvaliableLessons(db *sql.DB) []t.Lesson {
@@ -36,12 +37,12 @@ func GetAvaliableLessons(db *sql.DB) []t.Lesson {
 }
 
 func GetLessonWithUsers(db *sql.DB, callBackData string) []t.LessonWithUsers {
-	var lessons []t.LessonWithUsers 
-	query := "SELECT u.id, username, name, emoji, l.id, time, date, description, max" + 
-	" FROM yoga.lesson l" + 
-	" LEFT JOIN yoga.registered_users r ON l.id = r.lesson_id" +
-	" LEFT JOIN yoga.user u ON u.id = ANY(r.registered)" +
-	" WHERE l.id=$1;"
+	var lessons []t.LessonWithUsers
+	query := "SELECT u.id, username, name, emoji, l.id, time, date, description, max" +
+		" FROM yoga.lesson l" +
+		" LEFT JOIN yoga.registered_users r ON l.id = r.lesson_id" +
+		" LEFT JOIN yoga.user u ON u.id = ANY(r.registered)" +
+		" WHERE l.id=$1;"
 
 	data := strings.Split(callBackData, "=")
 
@@ -54,8 +55,8 @@ func GetLessonWithUsers(db *sql.DB, callBackData string) []t.LessonWithUsers {
 			err := rows.Scan(
 				&l.UserId, &l.Username, &l.Name, &l.Emoji,
 				&l.LessonId, &l.Time, &l.Date, &l.Description, &l.Max,
-				)
-			
+			)
+
 			if err != nil {
 				fmt.Println("✡️  line 51 err", err)
 			}
@@ -77,16 +78,16 @@ func ToggleUserInLesson(db *sql.DB, u t.Update) string {
 	switch action {
 	case "REGISTER":
 		query := "UPDATE yoga.registered_users" +
-		" SET registered = array_append(registered, $1)" +
-		" WHERE lesson_id=$2 AND NOT ($1=ANY(registered));"
+			" SET registered = array_append(registered, $1)" +
+			" WHERE lesson_id=$2 AND NOT ($1=ANY(registered));"
 
 		db.Exec(query, u.CallbackQuery.From.ID, lessonId)
 
 		text = "See you in the session✨"
 	case "UNREGISTER":
 		query := "UPDATE yoga.registered_users" +
-		" SET registered = array_remove(registered, $1)" +
-		" WHERE lesson_id=$2 AND NOT ($1=ANY(registered));"
+			" SET registered = array_remove(registered, $1)" +
+			" WHERE lesson_id=$2 AND NOT ($1=ANY(registered));"
 
 		db.Exec(query, u.CallbackQuery.From.ID, lessonId)
 
@@ -96,7 +97,7 @@ func ToggleUserInLesson(db *sql.DB, u t.Update) string {
 	return text
 }
 
-func CreateLesson(){ 
+func CreateLesson() {
 	//TODO don't forget to add a row into registered_users
 }
 
@@ -104,7 +105,7 @@ func CreateToken(db *sql.DB, tokenType string) string {
 	uuid := uuid.New()
 	created := time.Now()
 	query := "INSERT INTO yoga.token (id, type, created, valid) VALUES ($1,$2,$3,$4);"
-	
+
 	_, err := db.Query(query, uuid, tokenType, created, true)
 
 	if err == nil {
@@ -119,7 +120,7 @@ func SaveUser(db *sql.DB, id int64, username string, name string) {
 	INSERT INTO yoga.user (id, username, name) VALUES ($1, $2, $3)
 	ON CONFLICT(id) DO UPDATE SET
 	username = EXCLUDED.username, name = EXCLUDED.name;`
-	
+
 	db.Query(query, id, username, name)
 	//Notification for a Teacher if the user is new
 }
@@ -133,7 +134,7 @@ func GetUserWithMembership(db *sql.DB, userId int64) t.UserMembership {
 	db.QueryRow(query, userId).Scan(
 		&u.User.ID, &u.User.Username, &u.User.Name, &u.User.Emoji,
 		&u.Starts, &u.Ends, &u.Type, &u.LessonsAvailable,
-		)
+	)
 
 	return u
 }
@@ -183,8 +184,8 @@ func FindUsersByName(db *sql.DB, name string) []t.UserDB {
 func UpdateMembership(db *sql.DB, userId int64, memType int) t.Membership {
 	var m t.Membership
 	token := t.Token{
-	Created: time.Now(),
-	Type: memType,
+		Created: time.Now(),
+		Type:    memType,
 	}
 
 	query := `SELECT * FROM yoga.membership WHERE user_id=$1;`
@@ -204,4 +205,15 @@ func UpdateMembership(db *sql.DB, userId int64, memType int) t.Membership {
 	db.QueryRow(query, m.Type, m.Starts, m.Ends, m.LessonsAvailable, userId)
 
 	return m
+}
+
+func GetRegisteredOnLesson(db *sql.DB, lessonId int) t.RegisterdOnLesson {
+	var r t.RegisterdOnLesson
+	query := `SELECT registered, lesson_id, date
+FROM yoga.registered_users JOIN yoga.lesson on id=lesson_id 
+WHERE lesson_id=$1;`
+
+	db.QueryRow(query, lessonId).Scan(pq.Array(&r.IDs), &r.LessonId, &r.Date)
+
+	return r
 }

@@ -1,6 +1,5 @@
 package action
 
-
 import (
 	"bot/src/bot"
 	"bot/src/controller"
@@ -20,8 +19,8 @@ func SendTimetable(bot *bot.Bot, db *sql.DB, upd t.Update) {
 
 func SendContact(bot *bot.Bot, u t.Update) {
 	bot.SendMessage(t.Message{
-		ChatId: u.FromChat().ID,
-		Text: utils.ContactMsg,
+		ChatId:    u.FromChat().ID,
+		Text:      utils.ContactMsg,
 		ParseMode: "html",
 	})
 }
@@ -32,15 +31,15 @@ func SendProfile(bot *bot.Bot, db *sql.DB, u t.Update) {
 	buttons := [][]t.InlineKeyboardButton{
 		{
 			{
-				Text: utils.ChangeEmoji,
+				Text:         utils.ChangeEmoji,
 				CallbackData: utils.ChangeEmoji,
 			},
 		},
 	}
 
-	msg := t.Message {
-		ChatId: u.FromChat().ID,
-		Text: utils.ProfileText(userWithMem),
+	msg := t.Message{
+		ChatId:    u.FromChat().ID,
+		Text:      utils.ProfileText(userWithMem),
 		ParseMode: "html",
 		ReplyMarkup: t.InlineKeyboardMarkup{
 			InlineKeyboard: buttons,
@@ -52,10 +51,10 @@ func SendProfile(bot *bot.Bot, db *sql.DB, u t.Update) {
 
 func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 	replyKeyboard := t.ReplyKeyboardMarkup{
-		Keyboard: [][]t.KeyboardButton{ 
+		Keyboard: [][]t.KeyboardButton{
 			{
 				{
-					Text: utils.AdminKeyboard[utils.GenerateToken],
+					Text: utils.AdminKeyboard[utils.SignStudents],
 				},
 			},
 			{
@@ -72,9 +71,9 @@ func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 		ResizeKeyboard: true,
 	}
 
-	msg := t.Message {
-		Text: "Switch to admin mode🃏",
-		ChatId: chatId,
+	msg := t.Message{
+		Text:        "Switch to admin mode🃏",
+		ChatId:      chatId,
 		ReplyMarkup: &replyKeyboard,
 	}
 
@@ -83,7 +82,7 @@ func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 
 func SendKeyboard(bot *bot.Bot, chatId int64, text string) {
 	replyKeyboard := t.ReplyKeyboardMarkup{
-		Keyboard: [][]t.KeyboardButton{ 
+		Keyboard: [][]t.KeyboardButton{
 			{
 				{
 					Text: utils.Keyboard[utils.Timetable],
@@ -104,9 +103,9 @@ func SendKeyboard(bot *bot.Bot, chatId int64, text string) {
 		ResizeKeyboard: true,
 	}
 
-	msg := t.Message {
-		Text: text,
-		ChatId: chatId,
+	msg := t.Message{
+		Text:        text,
+		ChatId:      chatId,
 		ReplyMarkup: &replyKeyboard,
 	}
 

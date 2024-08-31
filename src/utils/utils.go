@@ -14,15 +14,15 @@ import (
 )
 
 func LoadEnv() {
-  env := os.Getenv("ENV")
+	env := os.Getenv("ENV")
 
-  if env == "" { 
-    err := godotenv.Load()
+	if env == "" {
+		err := godotenv.Load()
 
-    if err != nil {
-      log.Fatal("No .env")
-    }
-  }
+		if err != nil {
+			log.Fatal("No .env")
+		}
+	}
 }
 
 func GenerateTimetable(lessons []t.Lesson, showId bool) t.Message {
@@ -36,13 +36,13 @@ func GenerateTimetable(lessons []t.Lesson, showId bool) t.Message {
 		label := fmt.Sprintf("%s 🌀 %s 🌀 %s", weekday, date, time)
 
 		if showId {
-			label += ` ID = ${lesson.id}`
-		} 
+			label += fmt.Sprintf(" ID = %d", l.ID)
+		}
 
 		var button []t.InlineKeyboardButton
 
 		button = append(button, t.InlineKeyboardButton{
-			Text: label,
+			Text:         label,
 			CallbackData: fmt.Sprintf("SHOW_LESSON=%d", l.ID),
 		})
 		buttons = append(buttons, button)
@@ -81,12 +81,12 @@ func GenerateLessonMessage(lessons []t.LessonWithUsers, userId int64) t.Message 
 
 	if isUserInLesson {
 		button = append(button, t.InlineKeyboardButton{
-			Text: "Unregister from the lesson",
+			Text:         "Unregister from the lesson",
 			CallbackData: fmt.Sprintf("UNREGISTER=%d", lessons[0].LessonId),
 		})
 	} else {
 		button = append(button, t.InlineKeyboardButton{
-			Text: "Register for the lesson",
+			Text:         "Register for the lesson",
 			CallbackData: fmt.Sprintf("REGISTER=%d", lessons[0].LessonId),
 		})
 	}
@@ -96,7 +96,7 @@ func GenerateLessonMessage(lessons []t.LessonWithUsers, userId int64) t.Message 
 	msg.Text = fmt.Sprintf(
 		"%s 🚀 %s 🚀 %s 🕒\n%s\n\n%s",
 		weekday, date, time, description, yogis(lessons),
-		)
+	)
 	msg.ParseMode = "html"
 	msg.ReplyMarkup = t.InlineKeyboardMarkup{
 		InlineKeyboard: buttons,
@@ -117,7 +117,7 @@ func yogis(lessons []t.LessonWithUsers) string {
 				name = "@" + *l.Username
 			}
 
-			students += fmt.Sprintf("\n%d. %s", i + 1, name)
+			students += fmt.Sprintf("\n%d. %s", i+1, name)
 			registered++
 		}
 	}
@@ -133,7 +133,7 @@ func BeautyDate(date time.Time) string {
 
 func GenerateKeyboard() *t.ReplyKeyboardMarkup {
 	replyKeyboard := t.ReplyKeyboardMarkup{
-		Keyboard: [][]t.KeyboardButton{ 
+		Keyboard: [][]t.KeyboardButton{
 			{
 				{
 					Text: Keyboard["Timetable 🗓"],
@@ -162,7 +162,7 @@ func IsAdmin(id int64) bool {
 
 	admins := strings.Split(adminsStr, ",")
 
-	for _, adminStr := range(admins) {
+	for _, adminStr := range admins {
 
 		admin, err := strconv.ParseInt(adminStr, 10, 64)
 
@@ -184,9 +184,8 @@ func UserIdFromUpdate(u t.Update) (int64, bool) {
 		userId = u.Message.From.ID
 	}
 
-	return userId, updateWithCallbackQuery 
+	return userId, updateWithCallbackQuery
 }
-
 
 func UpdateMembership(memb *t.Membership, token t.Token) {
 	if memb.Ends.After(token.Created) {
@@ -202,9 +201,9 @@ func UpdateMembership(memb *t.Membership, token t.Token) {
 	}
 
 	if token.Type == 1 {
-		memb.LessonsAvailable += 4 
+		memb.LessonsAvailable += 4
 	} else if token.Type == 2 {
-		memb.LessonsAvailable += 8 
+		memb.LessonsAvailable += 8
 	} else if token.Type == 8 {
 		memb.LessonsAvailable = 0
 	}
@@ -236,18 +235,18 @@ func IsEmoji(s string) bool {
 }
 
 type ValidatedLesson struct {
-	IsValid bool
-    Date string
-    Time string
+	IsValid     bool
+	Date        string
+	Time        string
 	Description string
-    Max string
+	Max         string
 }
 
 func ValidateLessonMsg(s string) ValidatedLesson {
 	var lesson ValidatedLesson
 
 	splited := strings.Split(s, "\n")
-	
+
 	if len(splited) != 4 {
 		return lesson
 	}
@@ -256,18 +255,25 @@ func ValidateLessonMsg(s string) ValidatedLesson {
 		splited[i] = strings.TrimSpace(splited[i])
 	}
 
-	if len(splited[2]) == 0 || 
-		!regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`).Match([]byte(splited[0])) || 
+	if len(splited[2]) == 0 ||
+		!regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`).Match([]byte(splited[0])) ||
 		!regexp.MustCompile(`^\d{2}:\d{2}$`).Match([]byte(splited[1])) ||
 		!regexp.MustCompile(`^\d+$`).Match([]byte(splited[3])) {
 		return lesson
 	}
-	
-    lesson.IsValid = true
+
+	lesson.IsValid = true
 	lesson.Date = splited[0]
 	lesson.Time = splited[1]
 	lesson.Description = splited[2]
 	lesson.Max = splited[3]
 
 	return lesson
+}
+
+func UserMemText(u t.UserMembership) string {
+	ends := u.Ends.Format("2006-01-02")
+
+	return fmt.Sprintf("Type Y or N:\n <b>%s - %s</b>\n Ends: <b>%s</b>\nLessons <b>%d</b>",
+		u.User.Name, u.User.Username, ends, *u.LessonsAvailable)
 }

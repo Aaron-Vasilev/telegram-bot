@@ -10,7 +10,7 @@ type SceneState struct {
 	Data  interface{}
 }
 
-type sceneMap map[int64] SceneState
+type sceneMap map[int64]SceneState
 
 type Ctx struct {
 	Ctx context.Context
@@ -36,7 +36,7 @@ func (ctx *Ctx) End(userId int64) {
 func (s *Ctx) Next(userId int64) {
 	sMap := s.Ctx.Value(sceneKey).(sceneMap)
 	state := sMap[userId]
-	
+
 	state.Stage++
 	sMap[userId] = state
 
@@ -44,20 +44,20 @@ func (s *Ctx) Next(userId int64) {
 
 }
 
-func(s Ctx) GetValue(userId int64) (SceneState, bool) {
+func (s Ctx) GetValue(userId int64) (SceneState, bool) {
 	sMap, _ := s.Ctx.Value(sceneKey).(sceneMap)
 	value, exist := sMap[userId]
 
 	return value, exist
 }
 
-func(s *Ctx) SetValue(userId int64, state SceneState) {
+func (s *Ctx) SetValue(userId int64, state SceneState) {
 	sMap, ok := s.Ctx.Value(sceneKey).(sceneMap)
 
 	if ok {
 		sMap[userId] = state
 	} else {
-		sMap = sceneMap{ userId: state }
+		sMap = sceneMap{userId: state}
 	}
 
 	s.Ctx = context.WithValue(s.Ctx, sceneKey, sMap)

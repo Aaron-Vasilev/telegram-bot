@@ -12,29 +12,29 @@ type CustomError struct {
 }
 
 type UserDB struct {
-	ID        int64 
-	Name      string
-	Username  string
-	Emoji     string
+	ID       int64
+	Name     string
+	Username string
+	Emoji    string
 }
 type Lesson struct {
-	ID          int      
+	ID          int
 	Date        time.Time
 	Time        time.Time
-	Description string   
-	Max         int      
+	Description string
+	Max         int
 }
 
 type LessonWithUsers struct {
-	UserId     *int64 
-	Name       *string
-	Username   *string
-	Emoji      *string
+	UserId      *int64
+	Name        *string
+	Username    *string
+	Emoji       *string
 	LessonId    int
 	Date        time.Time
 	Time        time.Time
-	Description string   
-	Max         int      
+	Description string
+	Max         int
 }
 
 type Membership struct {
@@ -46,7 +46,7 @@ type Membership struct {
 }
 
 type UserMembership struct {
-	User UserDB
+	User             UserDB
 	Starts           *time.Time
 	Ends             *time.Time
 	Type             *int
@@ -60,3 +60,8 @@ type Token struct {
 	Valid   bool
 }
 
+type RegisterdOnLesson struct {
+	IDs      []int64
+	LessonId int
+	Date     time.Time
+}

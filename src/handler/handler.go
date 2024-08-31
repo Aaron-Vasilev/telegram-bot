@@ -32,39 +32,39 @@ func handleCallbackQuery(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 func handleScene(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	state, _ := ctx.GetValue(u.FromChat().ID)
 
-	switch  state.Scene {
-	case utils.GenerateToken: 
-		scene.GenTokenScene(ctx, bot, db, u)
-	case utils.ChangeEmoji: 
+	switch state.Scene {
+	case utils.SignStudents:
+		scene.SignStudents(ctx, bot, db, u)
+	case utils.ChangeEmoji:
 		scene.ChangeEmoji(ctx, bot, db, u)
-	case utils.AddLessons: 
+	case utils.AddLessons:
 		scene.AddLessons(ctx, bot, db, u)
-	case utils.AssignMembership: 
+	case utils.AssignMembership:
 		scene.AssignMembership(ctx, bot, db, u)
 	}
 }
 
 func handleAdminCmd(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	switch u.Message.Text {
-	case "ADMIN": 
+	case "ADMIN":
 		action.SendAdminKeyboard(bot, u.Message.From.ID)
 	case "USER":
 		action.SendKeyboard(bot, u.Message.From.ID, "User Keyboard")
-	case utils.GenerateToken:
+	case utils.SignStudents:
 		ctx.SetValue(u.Message.From.ID, scene.SceneState{
-			Scene: utils.GenerateToken,
+			Scene: utils.SignStudents,
 			Stage: 1,
 		})
 
-		scene.GenTokenScene(ctx, bot, db, u)
-	case utils.AddLessons: 
+		scene.SignStudents(ctx, bot, db, u)
+	case utils.AddLessons:
 		ctx.SetValue(u.Message.From.ID, scene.SceneState{
 			Scene: utils.AddLessons,
 			Stage: 1,
 		})
 
 		scene.AddLessons(ctx, bot, db, u)
-	case utils.AssignMembership: 
+	case utils.AssignMembership:
 		ctx.SetValue(u.Message.From.ID, scene.SceneState{
 			Scene: utils.AssignMembership,
 			Stage: 1,
@@ -88,13 +88,13 @@ func handleKeyboard(bot *bot.Bot, db *sql.DB, u t.Update) {
 	key := u.Message.Text
 
 	switch key {
-	case utils.Timetable: 
+	case utils.Timetable:
 		action.SendTimetable(bot, db, u)
-	case utils.Leaderboard: 
-	    bot.SendText(u.FromChat().ID, "Work is in progress🛠️")
-	case utils.Profile: 
+	case utils.Leaderboard:
+		bot.SendText(u.FromChat().ID, "Work is in progress🛠️")
+	case utils.Profile:
 		action.SendProfile(bot, db, u)
-	case utils.Contact: 
+	case utils.Contact:
 		action.SendContact(bot, u)
 	}
 }
@@ -103,10 +103,10 @@ func handleUpdates(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	if u.FromChat() == nil || (u.Message != nil && strings.HasPrefix(u.Message.Text, "/")) {
 		handleMenu(bot, db, u)
 
-		return 
+		return
 	}
 
-	userId, updateWithCallbackQuery := utils.UserIdFromUpdate(u) 
+	userId, updateWithCallbackQuery := utils.UserIdFromUpdate(u)
 
 	_, ok := ctx.GetValue(userId)
 

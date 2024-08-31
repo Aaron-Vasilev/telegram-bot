@@ -12,9 +12,9 @@ import (
 )
 
 type Bot struct {
-	Token string
+	Token   string
 	IsDebug bool
-	Offset int
+	Offset  int
 }
 
 func (bot *Bot) GetMe() t.TBot {
@@ -24,7 +24,7 @@ func (bot *Bot) GetMe() t.TBot {
 func (bot *Bot) GetUpdates() []t.Update {
 	offset := strconv.Itoa(bot.Offset)
 
-	return Call[[]t.Update](bot, "/getUpdates?timeout=3&offset=" + offset)
+	return Call[[]t.Update](bot, "/getUpdates?timeout=3&offset="+offset)
 }
 
 func (bot *Bot) SendMessage(msg t.Message) {
@@ -32,9 +32,19 @@ func (bot *Bot) SendMessage(msg t.Message) {
 }
 
 func (bot *Bot) SendText(chatId int64, text string) {
-	msg := t.Message {
-		Text: text,
+	msg := t.Message{
+		Text:   text,
 		ChatId: chatId,
+	}
+
+	Send(bot, "/sendMessage", msg)
+}
+
+func (bot *Bot) SendHTML(chatId int64, text string) {
+	msg := t.Message{
+		Text:      text,
+		ChatId:    chatId,
+		ParseMode: "html",
 	}
 
 	Send(bot, "/sendMessage", msg)
@@ -63,10 +73,10 @@ func Send(bot *Bot, method string, msg t.Message) t.Message {
 	}
 
 	res, err := http.Post(
-		"https://api.telegram.org/bot" + bot.Token + method,
+		"https://api.telegram.org/bot"+bot.Token+method,
 		"application/json",
 		bytes.NewBuffer(jsonData),
-		)
+	)
 
 	if err != nil {
 		fmt.Println("Error making the request:", err)
@@ -85,7 +95,7 @@ func Send(bot *Bot, method string, msg t.Message) t.Message {
 	} else if !resData.Ok {
 		fmt.Println("Response is not OK, ErrorCode:", resData.ErrorCode, resData.Description)
 		fmt.Println(resData.Description)
-	} else if bot.IsDebug  {
+	} else if bot.IsDebug {
 		s, _ := json.MarshalIndent(resData.Result, "", "\t")
 		fmt.Println("Messages SEND: ", string(s))
 	}
@@ -127,4 +137,3 @@ func Call[T any](bot *Bot, method string) T {
 
 	return resData.Result
 }
-
