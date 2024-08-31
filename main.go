@@ -45,8 +45,6 @@ func main() {
 	fmt.Println("Launch!")
 	defer func() {
 		if r := recover(); r != nil {
-			var r interface{} = "this is a string"
-
 			bot.Error("Panic! " + r.(string))
 		}
 	}()

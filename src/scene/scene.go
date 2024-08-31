@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"sync"
 )
 
 func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
@@ -38,7 +39,7 @@ func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			return
 		}
 
-//TODO receive a and lessonId from CallbackQuery 
+		//TODO receive a and lessonId from CallbackQuery
 		lessonId, err := strconv.Atoi(u.Message.Text)
 
 		if err != nil {
@@ -243,4 +244,78 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	}
 
 	ctx.Next(userId)
+}
+
+func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+	userId, _ := utils.UserIdFromUpdate(u)
+	state, ok := ctx.GetValue(userId)
+
+	if !ok {
+		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
+		ctx.End(userId)
+	}
+
+	switch state.Stage {
+	case 1:
+		bot.SendMessage(t.Message{
+			Text:   "Notify all users about new lessons?",
+			ChatId: userId,
+			ReplyMarkup: &t.InlineKeyboardMarkup{
+				InlineKeyboard: [][]t.InlineKeyboardButton{
+					{
+						{
+							Text:         "Yes",
+							CallbackData: "YES",
+						},
+						{
+							Text:         "No",
+							CallbackData: "NO",
+						},
+					},
+				},
+			},
+		})
+	case 2:
+		if u.CallbackQuery == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		if u.CallbackQuery.Data == "YES" {
+			var wg sync.WaitGroup
+			ids := controller.GetUsersIDs(db)
+
+			for i := range ids {
+				wg.Add(1)
+
+				go func() {
+					defer wg.Done()
+					bot.SendSticker(ids[i], utils.PinkSheepMeditating)
+					bot.SendMessage(t.Message{
+						ChatId: ids[i],
+						Text:   "My dear student, the new timetable is waiting for you.\nSee you at the lesson🙏",
+						ReplyMarkup: &t.InlineKeyboardMarkup{
+							InlineKeyboard: [][]t.InlineKeyboardButton{
+								{
+									{
+										Text:         utils.Timetable,
+										CallbackData: utils.Timetable,
+									},
+								},
+							},
+						},
+					})
+				}()
+			}
+			wg.Wait()
+		}
+		ctx.End(userId)
+		return
+	}
+
+	ctx.Next(userId)
+}
+
+func notifyUsers(bot *bot.Bot, ids []int64, msgs ...t.Message) {
 }

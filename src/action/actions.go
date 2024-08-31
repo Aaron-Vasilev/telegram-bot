@@ -67,6 +67,11 @@ func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 					Text: utils.AdminKeyboard[utils.AssignMembership],
 				},
 			},
+			{
+				{
+					Text: utils.AdminKeyboard[utils.NotifyAboutLessons],
+				},
+			},
 		},
 		ResizeKeyboard: true,
 	}

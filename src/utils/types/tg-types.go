@@ -485,7 +485,7 @@ type Message struct {
 	// Sticker message is a sticker, information about the sticker;
 	//
 	// optional
-	Sticker *Sticker `json:"sticker,omitempty"`
+	Sticker string `json:"sticker,omitempty"`
 	// Video message is a video, information about the video;
 	//
 	// optional

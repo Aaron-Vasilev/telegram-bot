@@ -50,6 +50,15 @@ func (bot *Bot) SendHTML(chatId int64, text string) {
 	Send(bot, "/sendMessage", msg)
 }
 
+func (bot *Bot) SendSticker(chatId int64, stickerId string) {
+	msg := t.Message{
+		ChatId:  chatId,
+		Sticker: stickerId,
+	}
+
+	Send(bot, "/sendSticker", msg)
+}
+
 func (bot *Bot) Error(text string) {
 	if bot.IsDebug {
 		fmt.Fprintf(os.Stdout, "\033[0;31m Error \033[0m %s", text)
@@ -93,8 +102,9 @@ func Send(bot *Bot, method string, msg t.Message) t.Message {
 	if err != nil {
 		fmt.Println("Error json.Unmarshal:", err)
 	} else if !resData.Ok {
-		fmt.Println("Response is not OK, ErrorCode:", resData.ErrorCode, resData.Description)
-		fmt.Println(resData.Description)
+		if resData.ErrorCode != 400 && resData.Description != "Bad Request: chat not found" {
+			bot.Error(fmt.Sprintf("Response is not OK, code: %d, %s", resData.ErrorCode, resData.Description))
+		}
 	} else if bot.IsDebug {
 		s, _ := json.MarshalIndent(resData.Result, "", "\t")
 		fmt.Println("Messages SEND: ", string(s))

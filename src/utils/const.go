@@ -8,9 +8,10 @@ const (
 	Contact     = "Contact 💌"
 
 	// ADMIN keyboard
-	SignStudents     = "Sign students ✍🏿"
-	AddLessons       = "Add lessons 📚"
-	AssignMembership = "Assign a membership 🔑"
+	SignStudents       = "Sign students ✍🏿"
+	AddLessons         = "Add lessons 📚"
+	AssignMembership   = "Assign a membership 🔑"
+	NotifyAboutLessons = "Notify about new lessons 💬"
 
 	//Inline keyboard
 	ChangeEmoji = "Change emoji"
@@ -26,6 +27,9 @@ const (
 	Onece   = 1
 	Twice   = 2
 	NoLimit = 8
+
+	//Stickers
+	PinkSheepMeditating = "CAACAgIAAxkBAAEi0oFklVEDLgLxyg23P1fyOASMuSO7SQACbgAD5KDOByc3KCA4N217LwQ"
 )
 
 var (
@@ -36,8 +40,9 @@ var (
 		Contact:     Contact,
 	}
 	AdminKeyboard = map[string]string{
-		SignStudents:     SignStudents,
-		AddLessons:       AddLessons,
-		AssignMembership: AssignMembership,
+		SignStudents:       SignStudents,
+		AddLessons:         AddLessons,
+		AssignMembership:   AssignMembership,
+		NotifyAboutLessons: NotifyAboutLessons,
 	}
 )

@@ -217,3 +217,26 @@ WHERE lesson_id=$1;`
 
 	return r
 }
+
+func GetUsersIDs(db *sql.DB) []int64 {
+	var ids []int64
+
+	rows, err := db.Query("SELECT id FROM yoga.user;")
+	defer rows.Close()
+
+	if err == nil {
+		for rows.Next() {
+			var id int64
+
+			err := rows.Scan(&id)
+
+			if err != nil {
+				fmt.Println("✡️  line 233 err", err)
+			}
+
+			ids = append(ids, id)
+		}
+	}
+
+	return ids
+}
