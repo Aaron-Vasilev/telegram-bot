@@ -93,7 +93,7 @@ func (bot *Bot) Error(text string) {
 	}
 }
 
-func Send(bot *Bot, method string, msg t.Message) t.Message {
+func Send(bot *Bot, method string, msg t.Message) {
 	var resData t.Response[t.Message]
 	jsonData, err := json.Marshal(msg)
 
@@ -106,31 +106,33 @@ func Send(bot *Bot, method string, msg t.Message) t.Message {
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)
+	defer res.Body.Close()
 
 	if err != nil {
-		fmt.Println("Error making the request:", err)
+		bot.Error("Error making the request:" + err.Error())
+		return
 	}
-	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 
 	if err != nil {
-		fmt.Println("Error while ioutil.ReadAll:", err)
+		bot.Error("Error while ioutil.ReadAll:" + err.Error())
+		return
 	}
 
-	err = json.Unmarshal(body, &resData)
-	if err != nil {
-		fmt.Println("Error json.Unmarshal:", err)
-	} else if !resData.Ok {
-		if resData.ErrorCode != 400 && resData.Description != "Bad Request: chat not found" {
-			bot.Error(fmt.Sprintf("Response is not OK, code: %d, %s", resData.ErrorCode, resData.Description))
+	if bot.IsDebug {
+		err = json.Unmarshal(body, &resData)
+		if err != nil {
+			fmt.Println("Error json.Unmarshal:", err)
+		} else if !resData.Ok {
+			if resData.ErrorCode != 400 && resData.Description != "Bad Request: chat not found" {
+				bot.Error(fmt.Sprintf("Response is not OK, code: %d, %s", resData.ErrorCode, resData.Description))
+			}
+		} else {
+			s, _ := json.MarshalIndent(resData.Result, "", "\t")
+			fmt.Println("Messages SEND: ", string(s))
 		}
-	} else if bot.IsDebug {
-		s, _ := json.MarshalIndent(resData.Result, "", "\t")
-		fmt.Println("Messages SEND: ", string(s))
-	}
-
-	return resData.Result
+    }
 }
 
 func Call[T any](bot *Bot, method string) T {
