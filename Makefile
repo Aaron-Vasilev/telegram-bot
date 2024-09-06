@@ -1,2 +1,2 @@
 run:
-	 @go build -o ./tmp/main ./src/main.go
+	 @go build -o ./build/bot ./main.go

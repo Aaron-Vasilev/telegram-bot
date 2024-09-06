@@ -22,6 +22,10 @@ func handleCallbackQuery(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		ctx.Start(u.FromChat().ID, utils.ChangeEmoji)
 
 		scene.ChangeEmoji(ctx, bot, db, u)
+	} else if data == utils.HowToFind {
+		action.SendHowToFind(bot, db, u)
+	} else if data == utils.Timetable {
+		action.SendTimetable(bot, db, u)
 	} else if timetableRe.MatchString(data) {
 		action.SendLesson(bot, db, u)
 	} else if lessonRe.MatchString(data) {
@@ -90,6 +94,12 @@ func handleMenu(bot *bot.Bot, db *sql.DB, u t.Update) {
 
 		controller.SaveUser(db, user.ID, user.UserName, name)
 		action.SendKeyboard(bot, user.ID, utils.GreetingMsg)
+	} else if u.Message.Text == "/start" {
+		user := u.Message.From
+		name := strings.Trim(fmt.Sprintf("%s %s", user.FirstName, user.LastName), " ")
+
+		controller.SaveUser(db, user.ID, user.UserName, name)
+		action.SendKeyboard(bot, user.ID, utils.GreetingMsg)
 	}
 }
 
@@ -102,7 +112,7 @@ func handleKeyboard(bot *bot.Bot, db *sql.DB, u t.Update) {
 	case utils.Leaderboard:
 		bot.SendText(u.FromChat().ID, "Work is in progress🛠️")
 	case utils.Profile:
-		action.SendProfile(bot, db, u)
+		action.SendProfile(bot, db, u.FromChat().ID)
 	case utils.Contact:
 		action.SendContact(bot, u)
 	}
@@ -125,6 +135,8 @@ func handleUpdates(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		handleCallbackQuery(ctx, bot, db, u)
 	} else if _, exists := utils.Keyboard[u.Message.Text]; exists {
 		handleKeyboard(bot, db, u)
+	} else if strings.HasPrefix(u.Message.Text, "/") {
+		handleMenu(bot, db, u)
 	} else if utils.IsAdmin(userId) {
 		handleAdminCmd(ctx, bot, db, u)
 	}

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"database/sql"
 
@@ -37,11 +36,6 @@ func main() {
 	bot.IsDebug = os.Getenv("ENV") == "DEBUG"
 	ctx := scene.NewSceneContext()
 
-	ctx.SetValue(111, scene.SceneState{
-		Scene: "lollul",
-		Stage: 0,
-	})
-
 	fmt.Println("Launch!")
 	defer func() {
 		if r := recover(); r != nil {
@@ -52,6 +46,5 @@ func main() {
 		updates := bot.GetUpdates()
 
 		handler.HandleUpdates(&ctx, bot, db, updates)
-		time.Sleep(3000 * time.Millisecond)
 	}
 }

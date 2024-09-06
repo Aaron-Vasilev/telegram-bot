@@ -481,7 +481,7 @@ type Message struct {
 	// Photo message is a photo, available sizes of the photo;
 	//
 	// optional
-	Photo []PhotoSize `json:"photo,omitempty"`
+	Photo string `json:"photo,omitempty"`
 	// Sticker message is a sticker, information about the sticker;
 	//
 	// optional
@@ -645,6 +645,10 @@ type Message struct {
 	//
 	// optional
 	ReplyMarkup interface{} `json:"reply_markup,omitempty"`
+	//
+	// optional
+	Latitude  float32 `json:"latitude,omitempty"`
+	Longitude float32 `json:"longitude,omitempty"`
 }
 
 // Time converts the message timestamp into a Time.

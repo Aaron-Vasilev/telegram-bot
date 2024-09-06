@@ -1,1 +1,4 @@
 .env
+pg_cmd
+*.pem
+build

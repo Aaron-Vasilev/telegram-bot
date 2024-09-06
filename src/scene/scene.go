@@ -1,6 +1,7 @@
 package scene
 
 import (
+	"bot/src/action"
 	"bot/src/bot"
 	"bot/src/controller"
 	"bot/src/utils"
@@ -31,10 +32,12 @@ func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 		msg := utils.GenerateTimetable(lessons, true)
 		msg.ChatId = userId
+		msg.Text = "Send me back an <b>ID</b> of a lesson"
+		msg.ParseMode = "html"
 		bot.SendMessage(msg)
 	case 2:
 		if u.Message == nil {
-			bot.SendText(userId, utils.WrongMsg)
+			bot.SendText(userId, "It's not a ID")
 			ctx.End(userId)
 			return
 		}
@@ -43,12 +46,18 @@ func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		lessonId, err := strconv.Atoi(u.Message.Text)
 
 		if err != nil {
-			bot.SendText(userId, utils.WrongMsg)
+			bot.SendText(userId, "The ID is not correct")
 			ctx.End(userId)
 			return
 		}
 
 		registered := controller.GetRegisteredOnLesson(db, lessonId)
+
+		if len(registered.IDs) == 0 {
+			bot.SendText(userId, "The are no users on this lesson")
+			ctx.End(userId)
+			return
+		}
 		state.Data = signStudentsData{
 			Data:  registered,
 			Index: 0,
@@ -101,6 +110,7 @@ func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 	ctx.Next(userId)
 }
+
 func ChangeEmoji(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	userId, _ := utils.UserIdFromUpdate(u)
 	state, ok := ctx.GetValue(userId)
@@ -112,7 +122,7 @@ func ChangeEmoji(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 	switch state.Stage {
 	case 1:
-		bot.SendText(userId, utils.SendEmojiMsg)
+		bot.SendHTML(userId, utils.SendEmojiMsg)
 	case 2:
 		if u.Message != nil {
 			emoji := u.Message.Text
@@ -156,7 +166,20 @@ func AddLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 		if data.IsValid {
 			controller.AddLesson(db, data)
-			bot.SendText(userId, "New lesson is added\n\nYou can add more or leave it as it is🧞‍♂️")
+			bot.SendMessage(t.Message{
+				ChatId: userId,
+				Text:   "New lesson was added\n\nYou can add more or leave it as it is🧞‍♂️",
+				ReplyMarkup: &t.InlineKeyboardMarkup{
+					InlineKeyboard: [][]t.InlineKeyboardButton{
+						{
+							{
+								Text:         "Finish",
+								CallbackData: "Finish",
+							},
+						},
+					},
+				},
+			})
 		} else {
 			bot.SendText(userId, "The lesson format is incorrect🔫")
 			ctx.End(userId)
@@ -180,6 +203,18 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 				{
 					Text:         "Once a week",
 					CallbackData: "1",
+				},
+			},
+			{
+				{
+					Text:         "Twice a week",
+					CallbackData: "2",
+				},
+			},
+			{
+				{
+					Text:         "Unlimited",
+					CallbackData: "8",
 				},
 			},
 		}
@@ -219,6 +254,12 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 		users := controller.FindUsersByName(db, u.Message.Text)
 
+		if len(users) == 0 {
+			bot.SendText(userId, "There are no users like: " + u.Message.Text)
+			ctx.End(userId)
+			return
+		}
+
 		for i := range users {
 			bot.SendText(userId, fmt.Sprintf("%s @%s ID = %d", users[i].Name, users[i].Username, users[i].ID))
 		}
@@ -236,11 +277,14 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		if err == nil && ok {
 			membership := controller.UpdateMembership(db, studentId, data)
 
+			action.SendProfile(bot, db, studentId)
+			bot.SendText(studentId, "Your membership was updated 🌋🧯")
 			bot.SendText(userId, fmt.Sprintf("Gotcha🦾\nLessons avaliable: %d", membership.LessonsAvailable))
 		} else {
 			bot.SendText(userId, "It's not an ID🔫")
 		}
 		ctx.End(userId)
+		return 
 	}
 
 	ctx.Next(userId)
@@ -276,10 +320,9 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			},
 		})
 	case 2:
+		ctx.End(userId)
 		if u.CallbackQuery == nil {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
-			return
 		}
 
 		if u.CallbackQuery.Data == "YES" {
@@ -310,7 +353,6 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			}
 			wg.Wait()
 		}
-		ctx.End(userId)
 		return
 	}
 

@@ -24,7 +24,7 @@ func (bot *Bot) GetMe() t.TBot {
 func (bot *Bot) GetUpdates() []t.Update {
 	offset := strconv.Itoa(bot.Offset)
 
-	return Call[[]t.Update](bot, "/getUpdates?timeout=3&offset="+offset)
+	return Call[[]t.Update](bot, "/getUpdates?timeout=1&offset="+offset)
 }
 
 func (bot *Bot) SendMessage(msg t.Message) {
@@ -58,6 +58,26 @@ func (bot *Bot) SendSticker(chatId int64, stickerId string) {
 
 	Send(bot, "/sendSticker", msg)
 }
+
+func (bot *Bot) SendPhotoById(chatId int64, fileId string) {
+	msg := t.Message{
+		ChatId:  chatId,
+		Photo: fileId,
+	}
+
+	Send(bot, "/sendPhoto", msg)
+}
+
+func (bot *Bot) SendLocation(chatId int64, lat float32, long float32) {
+	msg := t.Message{
+		ChatId:  chatId,
+        Latitude: lat,
+        Longitude: long,
+	}
+
+	Send(bot, "/sendLocation", msg)
+}
+
 
 func (bot *Bot) Error(text string) {
 	if bot.IsDebug {

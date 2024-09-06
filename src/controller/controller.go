@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
@@ -38,11 +37,9 @@ func GetAvaliableLessons(db *sql.DB) []t.Lesson {
 
 func GetLessonWithUsers(db *sql.DB, callBackData string) []t.LessonWithUsers {
 	var lessons []t.LessonWithUsers
-	query := "SELECT u.id, username, name, emoji, l.id, time, date, description, max" +
-		" FROM yoga.lesson l" +
-		" LEFT JOIN yoga.registered_users r ON l.id = r.lesson_id" +
-		" LEFT JOIN yoga.user u ON u.id = ANY(r.registered)" +
-		" WHERE l.id=$1;"
+	query := `SELECT u.id, username, name, emoji, l.id, time, date, description, max
+		FROM yoga.lesson l LEFT JOIN yoga.registered_users r ON l.id = r.lesson_id
+		LEFT JOIN yoga.user u ON u.id = ANY(r.registered) WHERE l.id=$1;`
 
 	data := strings.Split(callBackData, "=")
 
@@ -101,20 +98,6 @@ func CreateLesson() {
 	//TODO don't forget to add a row into registered_users
 }
 
-func CreateToken(db *sql.DB, tokenType string) string {
-	uuid := uuid.New()
-	created := time.Now()
-	query := "INSERT INTO yoga.token (id, type, created, valid) VALUES ($1,$2,$3,$4);"
-
-	_, err := db.Query(query, uuid, tokenType, created, true)
-
-	if err == nil {
-		return uuid.String()
-	} else {
-		return utils.WrongMsg
-	}
-}
-
 func SaveUser(db *sql.DB, id int64, username string, name string) {
 	query := `
 	INSERT INTO yoga.user (id, username, name) VALUES ($1, $2, $3)
@@ -154,7 +137,7 @@ func AddLesson(db *sql.DB, l utils.ValidatedLesson) {
 
 	query = `INSERT INTO yoga.registered_users (lesson_id, registered) VALUES ($1, $2);`
 
-	db.Exec(query, id, []int{})
+	db.Exec(query, id, pq.Array([]int{}))
 }
 
 func FindUsersByName(db *sql.DB, name string) []t.UserDB {
