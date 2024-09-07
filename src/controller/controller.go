@@ -80,7 +80,7 @@ func ToggleUserInLesson(db *sql.DB, u t.Update) string {
 
 		db.Exec(query, u.CallbackQuery.From.ID, lessonId)
 
-		text = "See you in the session✨"
+		text = utils.SeeYouMsg
 	case "UNREGISTER":
 		query := "UPDATE yoga.registered_users" +
 			" SET registered = array_remove(registered, $1)" +
@@ -120,6 +120,35 @@ func GetUserWithMembership(db *sql.DB, userId int64) t.UserMembership {
 	)
 
 	return u
+}
+
+func GetAllUsersWithMemLatest(db *sql.DB) []t.UserMembership {
+	var userMem []t.UserMembership
+	query := `
+	SELECT u.id, username, name, emoji, starts, ends, type, lessons_avaliable
+	FROM yoga.user u LEFT JOIN yoga.membership m ON u.id = m.user_id 
+	WHERE m.ends >= NOW() - INTERVAL '2 months';`
+
+	rows, err := db.Query(query)
+
+	if err == nil {
+		for rows.Next() {
+			var u t.UserMembership
+
+			err := rows.Scan(
+				&u.User.ID, &u.User.Username, &u.User.Name, &u.User.Emoji,
+				&u.Starts, &u.Ends, &u.Type, &u.LessonsAvailable,
+			)
+
+			if err != nil {
+				fmt.Println("✡️  line 233 err", err)
+			}
+
+			userMem = append(userMem, u)
+		}
+	}
+
+	return userMem
 }
 
 func UpdateEmoji(db *sql.DB, userId int64, emoji string) {

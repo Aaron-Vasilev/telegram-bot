@@ -105,12 +105,12 @@ func Send(bot *Bot, method string, msg t.Message) {
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)
-	defer res.Body.Close()
 
 	if err != nil {
 		bot.Error("Error making the request:" + err.Error())
 		return
 	}
+	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 

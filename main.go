@@ -2,6 +2,7 @@ package main
 
 import (
 	"bot/src/bot"
+	"bot/src/cron"
 	"bot/src/handler"
 	"bot/src/scene"
 	"bot/src/utils"
@@ -35,6 +36,7 @@ func main() {
 
 	bot.IsDebug = os.Getenv("ENV") == "DEBUG"
 	ctx := scene.NewSceneContext()
+	cron.Cron(bot, db)
 
 	fmt.Println("Launch!")
 	defer func() {

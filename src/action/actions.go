@@ -6,6 +6,8 @@ import (
 	"bot/src/utils"
 	t "bot/src/utils/types"
 	"database/sql"
+	"fmt"
+	"time"
 )
 
 func SendTimetable(bot *bot.Bot, db *sql.DB, upd t.Update) {
@@ -144,4 +146,28 @@ func SendHowToFind(bot *bot.Bot, db *sql.DB, u t.Update) {
 	bot.SendLocation(u.FromChat().ID, 32.05382162148281, 34.75493749973202)
 	bot.SendPhotoById(u.FromChat().ID, "AgACAgIAAxkBAAIVsWbZqoIj1U0WQMX97pezh8NPrvS1AAI03zEb_QAB0EqIuOgvJ2h8SQEAAwIAA3MAAzYE")
 	bot.SendPhotoById(u.FromChat().ID, "AgACAgIAAxkBAAIVwWbZ5AiqC497NDhWORiJd5oLx6oqAALZ4DEb_QAB0Eojpa9wdlTtSQEAAwIAA3kAAzYE")
+}
+
+func NotifyAboutSubscriptionEnds(bot *bot.Bot, db *sql.DB) {
+	today := time.Now()
+	usersMem := controller.GetAllUsersWithMemLatest(db)
+
+	for _, mem := range usersMem {
+		text := "My cherry varenichek🥟🍒\n"
+
+		if *mem.Type == utils.NoLimit {
+			text += fmt.Sprintf("Kindly reminder, your membership ends <b>%s</b>", mem.Ends.Format("2006-01-02"))
+		} else if *mem.LessonsAvailable <= 0 || mem.Ends.Before(today) {
+			text += fmt.Sprintf("When you come to my lesson next time, <b>remember to renew your membership</b>😚")
+		} else {
+			text += fmt.Sprintf(
+				"Your membership ends <b>%s</b> and you still have <b>%d</b> lessons🥳\nDon't forget to use them all🧞‍♀️",
+				mem.Ends.Format("2006-01-02"),
+				*mem.LessonsAvailable,
+			)
+		}
+		text += "\n" + utils.SeeYouMsg
+
+		bot.SendHTML(mem.User.ID, text)
+	}
 }
