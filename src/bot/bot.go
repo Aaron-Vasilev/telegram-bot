@@ -61,8 +61,8 @@ func (bot *Bot) SendSticker(chatId int64, stickerId string) {
 
 func (bot *Bot) SendPhotoById(chatId int64, fileId string) {
 	msg := t.Message{
-		ChatId:  chatId,
-		Photo: fileId,
+		ChatId: chatId,
+		Photo:  fileId,
 	}
 
 	Send(bot, "/sendPhoto", msg)
@@ -70,14 +70,13 @@ func (bot *Bot) SendPhotoById(chatId int64, fileId string) {
 
 func (bot *Bot) SendLocation(chatId int64, lat float32, long float32) {
 	msg := t.Message{
-		ChatId:  chatId,
-        Latitude: lat,
-        Longitude: long,
+		ChatId:    chatId,
+		Latitude:  lat,
+		Longitude: long,
 	}
 
 	Send(bot, "/sendLocation", msg)
 }
-
 
 func (bot *Bot) Error(text string) {
 	if bot.IsDebug {
@@ -132,7 +131,7 @@ func Send(bot *Bot, method string, msg t.Message) {
 			s, _ := json.MarshalIndent(resData.Result, "", "\t")
 			fmt.Println("Messages SEND: ", string(s))
 		}
-    }
+	}
 }
 
 func Call[T any](bot *Bot, method string) T {

@@ -255,7 +255,7 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		users := controller.FindUsersByName(db, u.Message.Text)
 
 		if len(users) == 0 {
-			bot.SendText(userId, "There are no users like: " + u.Message.Text)
+			bot.SendText(userId, "There are no users like: "+u.Message.Text)
 			ctx.End(userId)
 			return
 		}
@@ -284,7 +284,7 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			bot.SendText(userId, "It's not an ID🔫")
 		}
 		ctx.End(userId)
-		return 
+		return
 	}
 
 	ctx.Next(userId)
@@ -323,6 +323,7 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		ctx.End(userId)
 		if u.CallbackQuery == nil {
 			bot.SendText(userId, utils.WrongMsg)
+			return
 		}
 
 		if u.CallbackQuery.Data == "YES" {
