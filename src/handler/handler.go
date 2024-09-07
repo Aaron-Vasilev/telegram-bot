@@ -47,6 +47,8 @@ func handleScene(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		scene.AssignMembership(ctx, bot, db, u)
 	case utils.NotifyAboutLessons:
 		scene.NotifyAboutLessons(ctx, bot, db, u)
+	case utils.ExtendMemDate:
+		scene.ExtendMemEndDate(ctx, bot, db, u)
 	}
 }
 
@@ -84,6 +86,13 @@ func handleAdminCmd(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		})
 
 		scene.NotifyAboutLessons(ctx, bot, db, u)
+	case utils.ExtendMemDate:
+		ctx.SetValue(u.Message.From.ID, scene.SceneState{
+			Scene: utils.ExtendMemDate,
+			Stage: 1,
+		})
+
+		scene.ExtendMemEndDate(ctx, bot, db, u)
 	}
 }
 

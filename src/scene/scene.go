@@ -302,22 +302,9 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	switch state.Stage {
 	case 1:
 		bot.SendMessage(t.Message{
-			Text:   "Notify all users about new lessons?",
-			ChatId: userId,
-			ReplyMarkup: &t.InlineKeyboardMarkup{
-				InlineKeyboard: [][]t.InlineKeyboardButton{
-					{
-						{
-							Text:         "Yes",
-							CallbackData: "YES",
-						},
-						{
-							Text:         "No",
-							CallbackData: "NO",
-						},
-					},
-				},
-			},
+			Text:        "Notify all users about new lessons?",
+			ChatId:      userId,
+			ReplyMarkup: &utils.ConformationInlineKeyboard,
 		})
 	case 2:
 		ctx.End(userId)
@@ -360,5 +347,80 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	ctx.Next(userId)
 }
 
-func notifyUsers(bot *bot.Bot, ids []int64, msgs ...t.Message) {
+func ExtendMemEndDate(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+	userId, _ := utils.UserIdFromUpdate(u)
+	state, ok := ctx.GetValue(userId)
+
+	if !ok {
+		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
+		ctx.End(userId)
+	}
+
+	switch state.Stage {
+	case 1:
+		bot.SendHTML(userId, "Please send the <b>number</b> of days you'd like to extend student's membership by")
+	case 2:
+		if u.Message == nil {
+			bot.SendText(userId, utils.NotANumberMsg)
+			return
+		}
+
+		number, err := strconv.Atoi(u.Message.Text)
+
+		if err != nil {
+			bot.SendText(userId, utils.NotANumberMsg)
+			return
+		}
+		state.Data = number
+		ctx.SetValue(userId, state)
+
+		bot.SendMessage(t.Message{
+			ChatId:      userId,
+			Text:        fmt.Sprintf("Are you sure you want to extend each membership for %d days?", number),
+			ReplyMarkup: &utils.ConformationInlineKeyboard,
+		})
+	case 3:
+		if u.CallbackQuery == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		state, ok := ctx.GetValue(userId)
+		if !ok {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		daysNum, ok := state.Data.(int)
+		if !ok {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		if u.CallbackQuery.Data == "YES" {
+			var wg sync.WaitGroup
+			ids := controller.GetUsersIDsWithValidMem(db)
+
+			for i := range ids {
+				wg.Add(1)
+
+				go func() {
+					defer wg.Done()
+					bot.SendHTML(ids[i], utils.NoClassesMsg)
+					action.SendProfile(bot, db, ids[i])
+					controller.AddDaysToMem(db, ids[i], daysNum)
+					bot.SendText(ids[i], utils.UpdatedMembershipMsg)
+					action.SendProfile(bot, db, ids[i])
+				}()
+			}
+			wg.Wait()
+		}
+		ctx.End(userId)
+		return
+	}
+
+	ctx.Next(userId)
 }

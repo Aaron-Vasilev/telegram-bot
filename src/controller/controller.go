@@ -252,3 +252,35 @@ func GetUsersIDs(db *sql.DB) []int64 {
 
 	return ids
 }
+
+func GetUsersIDsWithValidMem(db *sql.DB) []int64 {
+	var ids []int64
+
+	rows, err := db.Query("SELECT user_id FROM yoga.membership m WHERE m.ends > NOW();")
+	defer rows.Close()
+
+	if err == nil {
+		for rows.Next() {
+			var id int64
+
+			err := rows.Scan(&id)
+
+			if err != nil {
+				fmt.Println("✡️  line 268 err", err)
+			}
+
+			ids = append(ids, id)
+		}
+	}
+
+	return ids
+}
+
+func AddDaysToMem(db *sql.DB, userId int64, num int) {
+	query := "UPDATE yoga.membership SET ends = ends + $1 * INTERVAL '1 days' WHERE user_id=$2;"
+	_, err := db.Exec(query, num, userId)
+
+	if err != nil {
+		fmt.Println("✡️  line 268 err", err)
+	}
+}
