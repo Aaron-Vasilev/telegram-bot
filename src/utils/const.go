@@ -17,6 +17,7 @@ const (
 	AssignMembership   = "Assign a membership 🔑"
 	NotifyAboutLessons = "Notify about new lessons 💬"
 	ExtendMemDate      = "Extend memberships date 🚨"
+	NotifyAll          = "NotifyAll"
 
 	// Inline keyboard
 	ChangeEmoji = "Change emoji"
@@ -55,6 +56,7 @@ var (
 		AssignMembership:   AssignMembership,
 		NotifyAboutLessons: NotifyAboutLessons,
 		ExtendMemDate:      ExtendMemDate,
+		NotifyAll:          NotifyAll,
 	}
 
 	// Inline keyboard

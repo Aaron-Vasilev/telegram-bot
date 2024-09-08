@@ -70,34 +70,32 @@ func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		bot.SendHTML(userId, utils.UserMemText(userWithMem))
 	case 3:
 		data, ok := state.Data.(signStudentsData)
-		registered := data.Data.IDs
+		ids := data.Data.IDs
 		currIndex := data.Index
 
-		if u.Message == nil || !ok || currIndex >= len(registered) {
+		if u.Message == nil || !ok || currIndex >= len(ids) {
 			bot.SendText(userId, utils.WrongMsg)
 			ctx.End(userId)
 			return
 		}
 
-		registeredID := registered[currIndex]
-
 		if u.Message.Text == "Y" {
 			db.Exec(`INSERT INTO yoga.attendance 
                     (user_id, lesson_id, date) VALUES ($1, $2, $3);`,
-				registeredID, data.Data.LessonId, data.Data.Date)
+				ids[currIndex], data.Data.LessonId, data.Data.Date)
 			db.Exec(`UPDATE yoga.membership 
                     SET lessons_avaliable = lessons_avaliable - 1
-                    WHERE user_id=$1;`, registeredID)
+                    WHERE user_id=$1;`, ids[currIndex])
 		}
 
 		currIndex++
-		if currIndex >= len(registered) {
+		if currIndex >= len(ids) {
 			bot.SendText(userId, "Good job!")
 			ctx.End(userId)
 			return
 		}
 
-		userWithMem := controller.GetUserWithMembership(db, registered[currIndex])
+		userWithMem := controller.GetUserWithMembership(db, ids[currIndex])
 		bot.SendHTML(userId, utils.UserMemText(userWithMem))
 
 		data.Index = currIndex
@@ -362,6 +360,7 @@ func ExtendMemEndDate(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	case 2:
 		if u.Message == nil {
 			bot.SendText(userId, utils.NotANumberMsg)
+			ctx.End(userId)
 			return
 		}
 
@@ -369,6 +368,7 @@ func ExtendMemEndDate(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 		if err != nil {
 			bot.SendText(userId, utils.NotANumberMsg)
+			ctx.End(userId)
 			return
 		}
 		state.Data = number
@@ -417,6 +417,67 @@ func ExtendMemEndDate(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 				}()
 			}
 			wg.Wait()
+		}
+		ctx.End(userId)
+		return
+	}
+
+	ctx.Next(userId)
+}
+
+func NotifyAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+	userId, _ := utils.UserIdFromUpdate(u)
+	state, ok := ctx.GetValue(userId)
+
+	if !ok {
+		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
+		ctx.End(userId)
+	}
+
+	switch state.Stage {
+	case 1:
+		bot.SendHTML(userId, "Send a message that will be send to everyone")
+	case 2:
+		if u.Message == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			return
+		}
+
+		state.Data = u.Message.Text
+		ctx.SetValue(userId, state)
+
+		bot.SendMessage(t.Message{
+			ChatId:      userId,
+			Text:        fmt.Sprintf("Are you sure you want to send this message?\n\n%s", u.Message.Text),
+			ReplyMarkup: &utils.ConformationInlineKeyboard,
+		})
+	case 3:
+		if u.CallbackQuery == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		state, ok := ctx.GetValue(userId)
+		if !ok {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		text, ok := state.Data.(string)
+		if !ok {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		if u.CallbackQuery.Data == "YES" {
+			ids := controller.GetUsersIDs(db)
+
+			for i := range ids {
+				go bot.SendText(ids[i], text)
+			}
 		}
 		ctx.End(userId)
 		return

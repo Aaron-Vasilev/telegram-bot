@@ -86,6 +86,11 @@ func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 			},
 			{
 				{
+					Text: utils.AdminKeyboard[utils.NotifyAll],
+				},
+			},
+			{
+				{
 					Text: utils.AdminKeyboard[utils.ExtendMemDate],
 				},
 			},
