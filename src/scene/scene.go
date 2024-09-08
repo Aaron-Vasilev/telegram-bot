@@ -65,7 +65,7 @@ func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 		ctx.SetValue(userId, state)
 
-		userWithMem := controller.GetUserWithMembership(db, userId)
+		userWithMem := controller.GetUserWithMembership(db, registered.IDs[0])
 
 		bot.SendHTML(userId, utils.UserMemText(userWithMem))
 	case 3:
@@ -97,7 +97,7 @@ func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			return
 		}
 
-		userWithMem := controller.GetUserWithMembership(db, userId)
+		userWithMem := controller.GetUserWithMembership(db, registered[currIndex])
 		bot.SendHTML(userId, utils.UserMemText(userWithMem))
 
 		data.Index = currIndex
