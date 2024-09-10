@@ -62,39 +62,27 @@ func SendProfile(bot *bot.Bot, db *sql.DB, chatId int64) {
 }
 
 func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
+	var keyboard [][]t.KeyboardButton
+	btns := make([]t.KeyboardButton, 2)
+	i := 0
+
+	for key := range utils.AdminKeyboard {
+		position := i % 2
+
+		btns[position] = t.KeyboardButton{
+			Text: key,
+		}
+
+		if position == 1 {
+			keyboard = append(keyboard, btns)
+			btns = make([]t.KeyboardButton, 2)
+		}
+
+		i++
+	}
+
 	replyKeyboard := t.ReplyKeyboardMarkup{
-		Keyboard: [][]t.KeyboardButton{
-			{
-				{
-					Text: utils.AdminKeyboard[utils.SignStudents],
-				},
-			},
-			{
-				{
-					Text: utils.AdminKeyboard[utils.AddLessons],
-				},
-			},
-			{
-				{
-					Text: utils.AdminKeyboard[utils.AssignMembership],
-				},
-			},
-			{
-				{
-					Text: utils.AdminKeyboard[utils.NotifyAboutLessons],
-				},
-			},
-			{
-				{
-					Text: utils.AdminKeyboard[utils.NotifyAll],
-				},
-			},
-			{
-				{
-					Text: utils.AdminKeyboard[utils.ExtendMemDate],
-				},
-			},
-		},
+		Keyboard:       keyboard,
 		ResizeKeyboard: true,
 	}
 

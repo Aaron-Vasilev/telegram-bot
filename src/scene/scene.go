@@ -12,6 +12,27 @@ import (
 	"sync"
 )
 
+type sceneCallback = func(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update)
+
+var Map = map[string]sceneCallback{
+	utils.SignStudents:       SignStudents,
+	utils.ChangeEmoji:        ChangeEmoji,
+	utils.AddLessons:         AddLessons,
+	utils.AssignMembership:   AssignMembership,
+	utils.NotifyAboutLessons: NotifyAboutLessons,
+	utils.NotifyAll:          NotifyAll,
+	utils.ExtendMemDate:      ExtendMemEndDate,
+}
+
+func Start(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update, scene string) {
+	ctx.SetValue(u.FromChat().ID, SceneState{
+		Scene: scene,
+		Stage: 1,
+	})
+
+	Map[scene](ctx, bot, db, u)
+}
+
 func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	type signStudentsData struct {
 		Data  t.RegisterdOnLesson

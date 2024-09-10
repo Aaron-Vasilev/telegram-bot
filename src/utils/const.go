@@ -15,9 +15,9 @@ const (
 	SignStudents       = "Sign students ✍🏿"
 	AddLessons         = "Add lessons 📚"
 	AssignMembership   = "Assign a membership 🔑"
-	NotifyAboutLessons = "Notify about new lessons 💬"
-	ExtendMemDate      = "Extend memberships date 🚨"
-	NotifyAll          = "NotifyAll"
+	NotifyAboutLessons = "Notify about lessons 💬"
+	ExtendMemDate      = "Extend memberships 🚨"
+	NotifyAll          = "Notify all 💌"
 
 	// Inline keyboard
 	ChangeEmoji = "Change emoji"

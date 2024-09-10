@@ -19,9 +19,7 @@ func handleCallbackQuery(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	lessonRe := regexp.MustCompile(`^(REGISTER|UNREGISTER)=\d+$`)
 
 	if data == utils.ChangeEmoji {
-		ctx.Start(u.FromChat().ID, utils.ChangeEmoji)
-
-		scene.ChangeEmoji(ctx, bot, db, u)
+		scene.Start(ctx, bot, db, u, utils.ChangeEmoji)
 	} else if data == utils.HowToFind {
 		action.SendHowToFind(bot, db, u)
 	} else if data == utils.Timetable {
@@ -36,86 +34,39 @@ func handleCallbackQuery(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 func handleScene(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	state, _ := ctx.GetValue(u.FromChat().ID)
 
-	switch state.Scene {
-	case utils.SignStudents:
-		scene.SignStudents(ctx, bot, db, u)
-	case utils.ChangeEmoji:
-		scene.ChangeEmoji(ctx, bot, db, u)
-	case utils.AddLessons:
-		scene.AddLessons(ctx, bot, db, u)
-	case utils.AssignMembership:
-		scene.AssignMembership(ctx, bot, db, u)
-	case utils.NotifyAboutLessons:
-		scene.NotifyAboutLessons(ctx, bot, db, u)
-	case utils.NotifyAll:
-		scene.NotifyAll(ctx, bot, db, u)
-	case utils.ExtendMemDate:
-		scene.ExtendMemEndDate(ctx, bot, db, u)
-	}
+	scene.Map[state.Scene](ctx, bot, db, u)
 }
 
 func handleAdminCmd(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+	if u.Message == nil {
+		return
+	}
+
+	cmd := u.Message.Text
+	if _, exist := scene.Map[cmd]; exist {
+
+		scene.Start(ctx, bot, db, u, cmd)
+		return
+	}
 	switch u.Message.Text {
 	case "ADMIN":
 		action.SendAdminKeyboard(bot, u.Message.From.ID)
 	case "USER":
 		action.SendKeyboard(bot, u.Message.From.ID, "User Keyboard")
-	case utils.SignStudents:
-		ctx.SetValue(u.Message.From.ID, scene.SceneState{
-			Scene: utils.SignStudents,
-			Stage: 1,
-		})
-
-		scene.SignStudents(ctx, bot, db, u)
-	case utils.AddLessons:
-		ctx.SetValue(u.Message.From.ID, scene.SceneState{
-			Scene: utils.AddLessons,
-			Stage: 1,
-		})
-
-		scene.AddLessons(ctx, bot, db, u)
-	case utils.AssignMembership:
-		ctx.SetValue(u.Message.From.ID, scene.SceneState{
-			Scene: utils.AssignMembership,
-			Stage: 1,
-		})
-
-		scene.AssignMembership(ctx, bot, db, u)
-	case utils.NotifyAboutLessons:
-		ctx.SetValue(u.Message.From.ID, scene.SceneState{
-			Scene: utils.NotifyAboutLessons,
-			Stage: 1,
-		})
-
-		scene.NotifyAboutLessons(ctx, bot, db, u)
-	case utils.ExtendMemDate:
-		ctx.SetValue(u.Message.From.ID, scene.SceneState{
-			Scene: utils.ExtendMemDate,
-			Stage: 1,
-		})
-
-		scene.ExtendMemEndDate(ctx, bot, db, u)
-	case utils.NotifyAll:
-		ctx.SetValue(u.Message.From.ID, scene.SceneState{
-			Scene: utils.NotifyAll,
-			Stage: 1,
-		})
-
-		scene.NotifyAll(ctx, bot, db, u)
 	}
 }
 
 func handleMenu(bot *bot.Bot, db *sql.DB, u t.Update) {
-	if u.FromChat() == nil {
-		user := u.MyChatMember.From
-		name := strings.Trim(fmt.Sprintf("%s %s", user.FirstName, user.LastName), " ")
+	if u.FromChat() == nil || u.Message.Text == "/start" {
+		var user t.User
 
-		controller.SaveUser(db, user.ID, user.UserName, name)
-		action.SendKeyboard(bot, user.ID, utils.GreetingMsg)
-	} else if u.Message.Text == "/start" {
-		user := u.Message.From
-		name := strings.Trim(fmt.Sprintf("%s %s", user.FirstName, user.LastName), " ")
+		if u.FromChat() == nil {
+			user = u.MyChatMember.From
+		} else {
+			user = *u.Message.From
+		}
 
+		name := strings.Trim(fmt.Sprintf("%s %s", user.FirstName, user.LastName), " ")
 		controller.SaveUser(db, user.ID, user.UserName, name)
 		action.SendKeyboard(bot, user.ID, utils.GreetingMsg)
 	}
