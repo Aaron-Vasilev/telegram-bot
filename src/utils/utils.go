@@ -273,15 +273,21 @@ func ValidateLessonMsg(s string) ValidatedLesson {
 }
 
 func UserMemText(u t.UserMembership) string {
+	userName := "null"
+
+	if u.User.Username.Valid {
+		userName = u.User.Username.String
+	}
+
 	if u.Ends == nil {
 		return fmt.Sprintf("Type <b>Y</b> or <b>N</b>:\n <b>%s - %s</b>\n <b>No membership</b>",
-			u.User.Name, u.User.Username)
+			u.User.Name, userName)
 
 	} else {
 		ends := u.Ends.Format("2006-01-02")
 
 		return fmt.Sprintf("Type <b>Y</b> or <b>N</b>:\n <b>%s - %s</b>\n Ends: <b>%s</b>\nLessons <b>%d</b>",
-			u.User.Name, u.User.Username, ends, *u.LessonsAvailable)
+			u.User.Name, userName, ends, *u.LessonsAvailable)
 	}
 }
 

@@ -280,7 +280,12 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		}
 
 		for i := range users {
-			bot.SendText(userId, fmt.Sprintf("%s @%s ID = %d", users[i].Name, users[i].Username, users[i].ID))
+			userName := ""
+
+			if users[i].Username.Valid {
+				userName = "@" + users[i].Username.String
+			}
+			bot.SendText(userId, fmt.Sprintf("%s %s ID = %d", users[i].Name, userName, users[i].ID))
 		}
 		bot.SendText(userId, "Send back the ID of the user you want to assign a membership")
 	case 4:

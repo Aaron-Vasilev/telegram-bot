@@ -303,9 +303,10 @@ func GetUsersAttandance(db *sql.DB, from time.Time, until time.Time) []t.UserAtt
 
 			if err != nil {
 				fmt.Println("✡️  line 305 err", err)
+			} else {
+				users = append(users, u)
 			}
 
-			users = append(users, u)
 		}
 	} else {
 		fmt.Println("✡️  line 312 err", err)

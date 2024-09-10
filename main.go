@@ -17,8 +17,9 @@ import (
 
 func NewBot(token string) *bot.Bot {
 	return &bot.Bot{
-		Token:  token,
-		Offset: 0,
+		Token:   token,
+		Offset:  0,
+		IsDebug: os.Getenv("ENV") == "DEBUG",
 	}
 }
 
@@ -34,7 +35,6 @@ func main() {
 
 	bot := NewBot(os.Getenv("TOKEN"))
 
-	bot.IsDebug = os.Getenv("ENV") == "DEBUG"
 	ctx := scene.NewSceneContext()
 	cron.Cron(bot, db)
 

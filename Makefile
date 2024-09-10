@@ -4,6 +4,8 @@ build:
 	 @go build -o ./tmp/bot ./main.go
 format:
 	@gofmt -w .
+start:
+	@supervisord -c ./supervisord.conf
 restart:
 	@supervisorctl shutdown
 	@go build -o ./tmp/bot ./main.go

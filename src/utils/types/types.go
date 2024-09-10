@@ -1,6 +1,7 @@
 package t
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,7 +15,7 @@ type CustomError struct {
 type UserDB struct {
 	ID       int64
 	Name     string
-	Username string
+	Username sql.NullString
 	Emoji    string
 }
 type Lesson struct {
