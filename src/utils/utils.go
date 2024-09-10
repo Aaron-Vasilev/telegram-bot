@@ -284,3 +284,40 @@ func UserMemText(u t.UserMembership) string {
 			u.User.Name, u.User.Username, ends, *u.LessonsAvailable)
 	}
 }
+
+var medals = []string{"🥇", "🥈", "🥉"}
+
+func medalEmoji(i int) string {
+	if i < len(medals) {
+		return medals[i]
+	}
+	return "🎖"
+}
+
+func LeaderboardText(users []t.UserAttendance, userID int64) string {
+	text := "The Yoggiest Yogi of the month📅:\n\n"
+	medalI := 0
+	userHasSeen := false
+
+	for i := 0; i < len(users); i++ {
+		if users[i].U.ID == userID {
+			userHasSeen = true
+		}
+		if i > 0 && users[i].Count < users[i-1].Count {
+			medalI++
+		}
+
+		if userHasSeen && i > 4 {
+			break
+		}
+
+		text += fmt.Sprintf("%s %s %s (%d times)\n",
+			medalEmoji(medalI),
+			users[i].U.Name,
+			users[i].U.Emoji,
+			users[i].Count,
+		)
+	}
+
+	return text
+}

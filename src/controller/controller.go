@@ -284,3 +284,33 @@ func AddDaysToMem(db *sql.DB, userId int64, num int) {
 		fmt.Println("✡️  line 268 err", err)
 	}
 }
+
+func GetUsersAttandance(db *sql.DB, from time.Time, until time.Time) []t.UserAttendance {
+	var users []t.UserAttendance
+	query := `
+      SELECT u.id, username, name, emoji, COUNT(user_id) AS mycount FROM yoga.attendance 
+      JOIN yoga.user u ON u.id = user_id WHERE date>= $1 and date <= $2 
+      GROUP BY u.id, username, name, emoji ORDER BY mycount DESC;`
+
+	rows, err := db.Query(query, from, until)
+	defer rows.Close()
+
+	if err == nil {
+		for rows.Next() {
+			var u t.UserAttendance
+
+			err := rows.Scan(&u.U.ID, &u.U.Username, &u.U.Name, &u.U.Emoji, &u.Count)
+
+			if err != nil {
+				fmt.Println("✡️  line 305 err", err)
+			}
+
+			users = append(users, u)
+		}
+	} else {
+		fmt.Println("✡️  line 312 err", err)
+
+	}
+
+	return users
+}

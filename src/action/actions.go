@@ -61,6 +61,25 @@ func SendProfile(bot *bot.Bot, db *sql.DB, chatId int64) {
 	bot.SendMessage(msg)
 }
 
+func SendLeaderboard(bot *bot.Bot, db *sql.DB, chatId int64) {
+	now := time.Now()
+
+	firstDay := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
+	nextMonth := now.Month() + 1
+	nextMonthYear := now.Year()
+	if nextMonth > 12 {
+		nextMonth = 1
+		nextMonthYear++
+	}
+	firstDayNextMonth := time.Date(nextMonthYear, nextMonth, 1, 0, 0, 0, 0, now.Location())
+	lastDay := firstDayNextMonth.AddDate(0, 0, -1)
+
+	usersWithCount := controller.GetUsersAttandance(db, firstDay, lastDay)
+
+	bot.SendHTML(chatId, utils.LeaderboardText(usersWithCount, chatId))
+}
+
 func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 	var keyboard [][]t.KeyboardButton
 	btns := make([]t.KeyboardButton, 2)

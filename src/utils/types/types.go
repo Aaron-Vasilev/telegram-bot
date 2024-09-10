@@ -65,3 +65,8 @@ type RegisterdOnLesson struct {
 	LessonId int
 	Date     time.Time
 }
+
+type UserAttendance struct {
+	U     UserDB
+	Count int
+}

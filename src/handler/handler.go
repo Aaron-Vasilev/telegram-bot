@@ -79,7 +79,7 @@ func handleKeyboard(bot *bot.Bot, db *sql.DB, u t.Update) {
 	case utils.Timetable:
 		action.SendTimetable(bot, db, u)
 	case utils.Leaderboard:
-		bot.SendText(u.FromChat().ID, "Work is in progress🛠️")
+		action.SendLeaderboard(bot, db, u.FromChat().ID)
 	case utils.Profile:
 		action.SendProfile(bot, db, u.FromChat().ID)
 	case utils.Contact:
