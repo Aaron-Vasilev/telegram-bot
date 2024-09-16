@@ -176,7 +176,15 @@ func AddLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		bot.SendText(userId, utils.AddLessonMsg)
 		ctx.Next(userId)
 	case 2:
+		const FINISH = "Finish"
+
 		if u.Message == nil {
+			if u.CallbackQuery != nil && u.CallbackQuery.Data == FINISH {
+				bot.SendText(userId, utils.GoodJob)
+			} else {
+				bot.SendText(userId, utils.WrongMsg)
+			}
+
 			ctx.End(userId)
 			return
 		}
@@ -187,13 +195,13 @@ func AddLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			controller.AddLesson(db, data)
 			bot.SendMessage(t.Message{
 				ChatId: userId,
-				Text:   "New lesson was added\n\nYou can add more or leave it as it is🧞‍♂️",
+				Text:   "New lesson was added\n\nYou can add more or or finish🧞‍♂️",
 				ReplyMarkup: &t.InlineKeyboardMarkup{
 					InlineKeyboard: [][]t.InlineKeyboardButton{
 						{
 							{
-								Text:         "Finish",
-								CallbackData: "Finish",
+								Text:         FINISH,
+								CallbackData: FINISH,
 							},
 						},
 					},

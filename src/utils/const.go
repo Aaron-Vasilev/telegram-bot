@@ -33,6 +33,7 @@ const (
 	NotANumberMsg        = "It's not a number 🔪"
 	NoClassesMsg         = "Hey puncake🥞, I won't be able to give classes for a couple days. So, <b>I update the end</b> date of your membership🤝\nThis is your current membership:"
 	UpdatedMembershipMsg = "And this is the updated one. See you at the lesson, chocolatka🍫"
+	GoodJob              = "Good job 🌝"
 
 	// Membership types
 	Onece   = 1
