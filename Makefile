@@ -7,8 +7,10 @@ format:
 start:
 	@supervisord -c ./supervisord.conf
 restart:
-	@supervisorctl shutdown
+	@sudo supervisorctl shutdown
 	@go build -o ./tmp/bot ./main.go
-	@supervisord -c ./supervisord.conf
+	@echo Build ends
+	@sudo supervisord -c ./supervisord.conf
+	@echo Started
 stop:
 	@supervisorctl shutdown

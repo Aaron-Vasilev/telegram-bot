@@ -20,7 +20,7 @@ var Map = map[string]sceneCallback{
 	utils.AddLessons:         AddLessons,
 	utils.AssignMembership:   AssignMembership,
 	utils.NotifyAboutLessons: NotifyAboutLessons,
-	utils.NotifyAll:          NotifyAll,
+	utils.ForwardAll:         ForwardAll,
 	utils.ExtendMemDate:      ExtendMemEndDate,
 }
 
@@ -459,50 +459,50 @@ func ExtendMemEndDate(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	ctx.Next(userId)
 }
 
-func NotifyAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
-	userId, _ := utils.UserIdFromUpdate(u)
-	state, ok := ctx.GetValue(userId)
+func ForwardAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+	userID, _ := utils.UserIdFromUpdate(u)
+	state, ok := ctx.GetValue(userID)
 
 	if !ok {
-		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
-		ctx.End(userId)
+		bot.Error(fmt.Sprintf("No scene for the user: %d", userID))
+		ctx.End(userID)
 	}
 
 	switch state.Stage {
 	case 1:
-		bot.SendHTML(userId, "Send a message that will be send to everyone")
+		bot.SendHTML(userID, "Send a message that will be forwarded to everyone")
 	case 2:
 		if u.Message == nil {
-			bot.SendText(userId, utils.WrongMsg)
+			bot.SendText(userID, utils.WrongMsg)
 			return
 		}
 
-		state.Data = u.Message.Text
-		ctx.SetValue(userId, state)
+		state.Data = u.Message.MessageID
+		ctx.SetValue(userID, state)
 
 		bot.SendMessage(t.Message{
-			ChatId:      userId,
-			Text:        fmt.Sprintf("Are you sure you want to send this message?\n\n%s", u.Message.Text),
+			ChatId:      userID,
+			Text:        "Are you sure you want to send this message?",
 			ReplyMarkup: &utils.ConformationInlineKeyboard,
 		})
 	case 3:
 		if u.CallbackQuery == nil {
-			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.SendText(userID, utils.WrongMsg)
+			ctx.End(userID)
 			return
 		}
 
-		state, ok := ctx.GetValue(userId)
+		state, ok := ctx.GetValue(userID)
 		if !ok {
-			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.SendText(userID, utils.WrongMsg)
+			ctx.End(userID)
 			return
 		}
 
-		text, ok := state.Data.(string)
+		messageID, ok := state.Data.(int)
 		if !ok {
-			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.SendText(userID, utils.WrongMsg)
+			ctx.End(userID)
 			return
 		}
 
@@ -510,12 +510,12 @@ func NotifyAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			ids := controller.GetUsersIDs(db)
 
 			for i := range ids {
-				go bot.SendText(ids[i], text)
+				go bot.Forward(ids[i], userID, messageID)
 			}
 		}
-		ctx.End(userId)
+		ctx.End(userID)
 		return
 	}
 
-	ctx.Next(userId)
+	ctx.Next(userID)
 }

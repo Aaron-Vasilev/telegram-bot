@@ -50,6 +50,16 @@ func (bot *Bot) SendHTML(chatId int64, text string) {
 	Send(bot, "/sendMessage", msg)
 }
 
+func (bot *Bot) Forward(chatId, fromChatId int64, msgId int) {
+	msg := t.Message{
+		ChatId:     chatId,
+		MessageID:  msgId,
+		FromChatID: fromChatId,
+	}
+
+	Send(bot, "/forwardMessage", msg)
+}
+
 func (bot *Bot) SendSticker(chatId int64, stickerId string) {
 	msg := t.Message{
 		ChatId:  chatId,

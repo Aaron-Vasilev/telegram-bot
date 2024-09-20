@@ -405,9 +405,9 @@ type Message struct {
 	// identifier of the original message in the channel;
 	//
 	// optional
-	ForwardFromMessageID int `json:"forward_from_message_id,omitempty"`
-	// ForwardSignature for messages forwarded from channels, signature of the
-	// post author if present
+	FromChatID int64 `json:"from_chat_id,omitempty"`
+	// Use this method to forward messages of any kind. Service messages and messages with protected
+	// content can't be forwarded. On success, the sent Message is returned.
 	//
 	// optional
 	ForwardSignature string `json:"forward_signature,omitempty"`
