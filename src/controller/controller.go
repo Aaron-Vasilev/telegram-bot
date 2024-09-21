@@ -74,17 +74,17 @@ func ToggleUserInLesson(db *sql.DB, u t.Update) string {
 
 	switch action {
 	case "REGISTER":
-		query := "UPDATE yoga.registered_users" +
-			" SET registered = array_append(registered, $1)" +
-			" WHERE lesson_id=$2 AND NOT ($1=ANY(registered));"
+		query := `UPDATE yoga.registered_users
+			SET registered = array_append(registered, $1)
+			WHERE lesson_id=$2 AND NOT ($1=ANY(registered));`
 
 		db.Exec(query, u.CallbackQuery.From.ID, lessonId)
 
 		text = utils.SeeYouMsg
 	case "UNREGISTER":
-		query := "UPDATE yoga.registered_users" +
-			" SET registered = array_remove(registered, $1)" +
-			" WHERE lesson_id=$2 AND NOT ($1=ANY(registered));"
+		query := `UPDATE yoga.registered_users
+			SET registered = array_remove(registered, $1)
+			WHERE lesson_id=$2;`
 
 		db.Exec(query, u.CallbackQuery.From.ID, lessonId)
 
