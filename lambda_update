@@ -1,0 +1,12 @@
+echo "START build"
+GOOS=linux GOARCH=arm64 go build -tags lambda.norpc -o tmp/bootstrap ./main.go;
+echo "END build"
+echo "START zip"
+zip tmp/yogabot.zip tmp/bootstrap;
+echo "END zip"
+echo "START lambda update"
+aws lambda update-function-code --function-name yogabot \
+--profile private \
+--zip-file fileb:///Users/avasilev/projects/my/bot/tmp/yogabot.zip;
+
+echo "END lambda update"
