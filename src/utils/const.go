@@ -16,7 +16,7 @@ const (
 	AddLessons         = "Add lessons 📚"
 	AssignMembership   = "Assign a membership 🔑"
 	NotifyAboutLessons = "Notify about lessons 💬"
-	ExtendMemDate      = "Extend memberships 🚨"
+	FreezeMembership   = "Freeze memberships ❄️"
 	ForwardAll         = "Forward all 💌"
 
 	// Inline keyboard
@@ -56,7 +56,7 @@ var (
 		AddLessons:         AddLessons,
 		AssignMembership:   AssignMembership,
 		NotifyAboutLessons: NotifyAboutLessons,
-		ExtendMemDate:      ExtendMemDate,
+		FreezeMembership:      FreezeMembership,
 		ForwardAll:         ForwardAll,
 	}
 

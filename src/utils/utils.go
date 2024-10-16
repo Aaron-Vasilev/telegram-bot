@@ -327,3 +327,20 @@ func LeaderboardText(users []t.UserAttendance, userID int64) string {
 
 	return text
 }
+
+func BuildInlineKeyboard(vals []string) t.InlineKeyboardMarkup {
+	var btns []t.InlineKeyboardButton
+
+	for _, val := range vals {
+		btns = append(btns, t.InlineKeyboardButton{
+			Text: val,
+			CallbackData: val,
+		})
+	}
+
+	return t.InlineKeyboardMarkup{
+		InlineKeyboard: [][]t.InlineKeyboardButton{
+			btns,
+		},
+	}
+}

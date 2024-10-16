@@ -171,7 +171,7 @@ func AddLesson(db *sql.DB, l utils.ValidatedLesson) {
 
 func FindUsersByName(db *sql.DB, name string) []t.UserDB {
 	var users []t.UserDB
-	query := `SELECT * FROM yoga.user WHERE name LIKE '%' || $1 || '%' OR username LIKE '%' || $1 || '%';`
+	query := `SELECT * FROM yoga.user WHERE name ILIKE '%' || $1 || '%' OR username ILIKE '%' || $1 || '%';`
 
 	rows, err := db.Query(query, name)
 

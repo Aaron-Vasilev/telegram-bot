@@ -21,7 +21,7 @@ var Map = map[string]sceneCallback{
 	utils.AssignMembership:   AssignMembership,
 	utils.NotifyAboutLessons: NotifyAboutLessons,
 	utils.ForwardAll:         ForwardAll,
-	utils.ExtendMemDate:      ExtendMemEndDate,
+	utils.FreezeMembership:   FreezeMembership,
 }
 
 func Start(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update, scene string) {
@@ -33,11 +33,12 @@ func Start(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update, scene string) {
 	Map[scene](ctx, bot, db, u)
 }
 
+type signStudentsData struct {
+	Data  t.RegisterdOnLesson
+	Index int
+}
+
 func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
-	type signStudentsData struct {
-		Data  t.RegisterdOnLesson
-		Index int
-	}
 
 	userId, _ := utils.UserIdFromUpdate(u)
 	state, ok := ctx.GetValue(userId)
@@ -279,23 +280,7 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			return
 		}
 
-		users := controller.FindUsersByName(db, u.Message.Text)
-
-		if len(users) == 0 {
-			bot.SendText(userId, "There are no users like: "+u.Message.Text)
-			ctx.End(userId)
-			return
-		}
-
-		for i := range users {
-			userName := ""
-
-			if users[i].Username.Valid {
-				userName = "@" + users[i].Username.String
-			}
-			bot.SendText(userId, fmt.Sprintf("%s %s ID = %d", users[i].Name, userName, users[i].ID))
-		}
-		bot.SendText(userId, "Send back the ID of the user you want to assign a membership")
+		sendUserList(ctx, db, bot, userId, u.Message.Text)
 	case 4:
 		if u.Message == nil {
 			bot.SendText(userId, utils.WrongMsg)
@@ -348,6 +333,7 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		if u.CallbackQuery.Data == "YES" {
 			var wg sync.WaitGroup
 			ids := controller.GetUsersIDs(db)
+			btns := utils.BuildInlineKeyboard([]string{ utils.Timetable })
 
 			for i := range ids {
 				wg.Add(1)
@@ -358,16 +344,7 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 					bot.SendMessage(t.Message{
 						ChatId: ids[i],
 						Text:   "My dear student, the new timetable is waiting for you.\nSee you at the lesson🙏",
-						ReplyMarkup: &t.InlineKeyboardMarkup{
-							InlineKeyboard: [][]t.InlineKeyboardButton{
-								{
-									{
-										Text:         utils.Timetable,
-										CallbackData: utils.Timetable,
-									},
-								},
-							},
-						},
+						ReplyMarkup: btns,
 					})
 				}()
 			}
@@ -379,7 +356,13 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	ctx.Next(userId)
 }
 
-func ExtendMemEndDate(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+type freezeMemData struct {
+	Type   string
+	UserId int64
+	Days   int
+}
+
+func FreezeMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	userId, _ := utils.UserIdFromUpdate(u)
 	state, ok := ctx.GetValue(userId)
 
@@ -388,10 +371,75 @@ func ExtendMemEndDate(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		ctx.End(userId)
 	}
 
+	Single := "Single"
+	All := "All"
+	SendNumberDaysMsg := "Please send the <b>number</b> of days you'd like to freeze student's membership by"
+
 	switch state.Stage {
 	case 1:
-		bot.SendHTML(userId, "Please send the <b>number</b> of days you'd like to extend student's membership by")
+		btns := utils.BuildInlineKeyboard([]string{Single, All})
+
+		bot.SendMessage(t.Message{
+			ChatId: userId,
+			Text: "What kind of membership do you want to freeze?",
+			ReplyMarkup: btns,
+		})
 	case 2:
+		if u.CallbackQuery == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		if u.CallbackQuery.Data == Single {
+			state.Data = freezeMemData{
+				Type: Single,
+			}
+			bot.SendText(userId, "Now, write a username or full name of a student")
+		} else if u.CallbackQuery.Data == All {
+			state.Stage = 4
+			state.Data = freezeMemData{
+				Type: All,
+			}
+			bot.SendHTML(userId, SendNumberDaysMsg)
+		} else {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		ctx.SetValue(userId, state)
+	case 3:
+		if u.Message == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		sendUserList(ctx, db, bot, userId, u.Message.Text)
+	case 4:
+		if u.Message == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		studentId, err := strconv.ParseInt(u.Message.Text, 10, 64)
+		data, ok := state.Data.(freezeMemData)
+
+		if err == nil && ok {
+			data.UserId = studentId
+			state.Data = data
+
+			ctx.SetValue(userId, state)
+
+			bot.SendHTML(userId, SendNumberDaysMsg)
+		} else {
+			bot.SendText(userId, "It's not an ID🔫")
+			ctx.End(userId)
+			return
+		}
+	case 5:
 		if u.Message == nil {
 			bot.SendText(userId, utils.NotANumberMsg)
 			ctx.End(userId)
@@ -405,38 +453,35 @@ func ExtendMemEndDate(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			ctx.End(userId)
 			return
 		}
-		state.Data = number
+
+		data := state.Data.(freezeMemData)
+		data.Days = number
+		state.Data = data
+
 		ctx.SetValue(userId, state)
 
 		bot.SendMessage(t.Message{
 			ChatId:      userId,
-			Text:        fmt.Sprintf("Are you sure you want to extend each membership for %d days?", number),
+			Text:        fmt.Sprintf("Are you sure you want to freeze the membership for %d days? 🚨", number),
 			ReplyMarkup: &utils.ConformationInlineKeyboard,
 		})
-	case 3:
+	case 6:
 		if u.CallbackQuery == nil {
 			bot.SendText(userId, utils.WrongMsg)
 			ctx.End(userId)
 			return
 		}
 
-		state, ok := ctx.GetValue(userId)
-		if !ok {
-			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
-			return
-		}
-
-		daysNum, ok := state.Data.(int)
-		if !ok {
-			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
-			return
-		}
-
 		if u.CallbackQuery.Data == "YES" {
+			var ids []int64
 			var wg sync.WaitGroup
-			ids := controller.GetUsersIDsWithValidMem(db)
+			data := state.Data.(freezeMemData)
+
+			if data.Type == All {
+				ids = controller.GetUsersIDsWithValidMem(db)
+			} else {
+				ids = []int64{data.UserId}
+			}
 
 			for i := range ids {
 				wg.Add(1)
@@ -445,13 +490,14 @@ func ExtendMemEndDate(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 					defer wg.Done()
 					bot.SendHTML(ids[i], utils.NoClassesMsg)
 					action.SendProfile(bot, db, ids[i])
-					controller.AddDaysToMem(db, ids[i], daysNum)
+					controller.AddDaysToMem(db, ids[i], data.Days)
 					bot.SendText(ids[i], utils.UpdatedMembershipMsg)
 					action.SendProfile(bot, db, ids[i])
 				}()
 			}
 			wg.Wait()
 		}
+
 		ctx.End(userId)
 		return
 	}
@@ -519,3 +565,4 @@ func ForwardAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 	ctx.Next(userID)
 }
+//TODO change to ssign a membership
