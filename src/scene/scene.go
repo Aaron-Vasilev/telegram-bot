@@ -498,6 +498,7 @@ func FreezeMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			wg.Wait()
 		}
 
+		bot.SendText(userId, utils.GoodJob)
 		ctx.End(userId)
 		return
 	}
@@ -565,4 +566,3 @@ func ForwardAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 	ctx.Next(userID)
 }
-//TODO change to ssign a membership
