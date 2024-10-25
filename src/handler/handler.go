@@ -15,7 +15,6 @@ import (
 
 func handleCallbackQuery(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	data := u.CallbackData()
-	timetableRe := regexp.MustCompile(`^SHOW_LESSON=\d+$`)
 	lessonRe := regexp.MustCompile(`^(REGISTER|UNREGISTER)=\d+$`)
 
 	if data == utils.ChangeEmoji {
@@ -24,7 +23,7 @@ func handleCallbackQuery(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		action.SendHowToFind(bot, db, u)
 	} else if data == utils.Timetable {
 		action.SendTimetable(bot, db, u)
-	} else if timetableRe.MatchString(data) {
+	} else if utils.LessonRegexp().MatchString(data) {
 		action.SendLesson(bot, db, u)
 	} else if lessonRe.MatchString(data) {
 		action.RegisterForLesson(bot, db, u)
@@ -87,7 +86,7 @@ func handleKeyboard(bot *bot.Bot, db *sql.DB, u t.Update) {
 	}
 }
 
-func handleUpdates(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+func HandleUpdate(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	if u.FromChat() == nil || (u.Message != nil && strings.HasPrefix(u.Message.Text, "/")) {
 		handleMenu(bot, db, u)
 
@@ -113,7 +112,7 @@ func handleUpdates(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 func HandleUpdates(c *scene.Ctx, bot *bot.Bot, db *sql.DB, updates []t.Update) {
 	for _, update := range updates {
-		handleUpdates(c, bot, db, update)
+		HandleUpdate(c, bot, db, update)
 
 		bot.Offset = update.UpdateID + 1
 	}

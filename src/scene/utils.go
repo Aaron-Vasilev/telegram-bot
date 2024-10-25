@@ -25,5 +25,5 @@ func sendUserList(ctx *Ctx, db *sql.DB, bot *bot.Bot, userID int64, search strin
 		bot.SendText(userID, fmt.Sprintf("%s %s ID = %d", users[i].Name, userName, users[i].ID))
 	}
 
-	bot.SendText(userID, "Send back the ID of the user you want to assign a membership" )
+	bot.SendText(userID, "Send back the ID of the user you want to assign a membership")
 }

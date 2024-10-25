@@ -15,6 +15,8 @@ type Response[T any] struct {
 	Parameters  *ResponseParameters `json:"parameters,omitempty"`
 }
 
+// Types was copied from https://github.com/go-telegram-bot-api/telegram-bot-api/blob/master/types.go
+
 type TBot struct {
 	Id                      big.Int `json:"id"`
 	IsBot                   bool    `json:"is_bot"`

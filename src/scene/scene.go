@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -22,6 +23,7 @@ var Map = map[string]sceneCallback{
 	utils.NotifyAboutLessons: NotifyAboutLessons,
 	utils.ForwardAll:         ForwardAll,
 	utils.FreezeMembership:   FreezeMembership,
+	utils.EditLesson:         EditLesson,
 }
 
 func Start(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update, scene string) {
@@ -52,7 +54,7 @@ func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	case 1:
 		lessons := controller.GetAvaliableLessons(db)
 
-		msg := utils.GenerateTimetable(lessons, true)
+		msg := utils.GenerateTimetableMsg(lessons, true)
 		msg.ChatId = userId
 		msg.Text = "Send me back an <b>ID</b> of a lesson"
 		msg.ParseMode = "html"
@@ -190,7 +192,7 @@ func AddLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			return
 		}
 
-		data := utils.ValidateLessonMsg(u.Message.Text)
+		data := utils.ValidateLessonStr(u.Message.Text)
 
 		if data.IsValid {
 			controller.AddLesson(db, data)
@@ -333,7 +335,7 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		if u.CallbackQuery.Data == "YES" {
 			var wg sync.WaitGroup
 			ids := controller.GetUsersIDs(db)
-			btns := utils.BuildInlineKeyboard([]string{ utils.Timetable })
+			btns := utils.BuildInlineKeyboard([]string{utils.Timetable})
 
 			for i := range ids {
 				wg.Add(1)
@@ -342,8 +344,8 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 					defer wg.Done()
 					bot.SendSticker(ids[i], utils.PinkSheepMeditating)
 					bot.SendMessage(t.Message{
-						ChatId: ids[i],
-						Text:   "My dear student, the new timetable is waiting for you.\nSee you at the lesson🙏",
+						ChatId:      ids[i],
+						Text:        "My dear student, the new timetable is waiting for you.\nSee you at the lesson🙏",
 						ReplyMarkup: btns,
 					})
 				}()
@@ -380,8 +382,8 @@ func FreezeMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		btns := utils.BuildInlineKeyboard([]string{Single, All})
 
 		bot.SendMessage(t.Message{
-			ChatId: userId,
-			Text: "What kind of membership do you want to freeze?",
+			ChatId:      userId,
+			Text:        "What kind of membership do you want to freeze?",
 			ReplyMarkup: btns,
 		})
 	case 2:
@@ -565,4 +567,145 @@ func ForwardAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	}
 
 	ctx.Next(userID)
+}
+
+type editLessonData struct {
+	Type     string
+	LessonId int
+}
+
+func EditLesson(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+	userId, _ := utils.UserIdFromUpdate(u)
+	state, ok := ctx.GetValue(userId)
+
+	if !ok {
+		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
+		ctx.End(userId)
+	}
+
+	date := "date"
+	time := "time"
+	description := "description"
+	max := "max"
+
+	switch state.Stage {
+	case 1:
+		lessons := controller.GetAvaliableLessons(db)
+
+		msg := utils.GenerateTimetableMsg(lessons, false)
+		msg.ChatId = userId
+		msg.Text = "Which lesson you want to edit?"
+		bot.SendMessage(msg)
+	case 2:
+		if u.CallbackQuery == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		data := u.CallbackQuery.Data
+
+		if !utils.LessonRegexp().MatchString(data) {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		lessonAndId := strings.Split(data, "=")
+		lessonId, err := strconv.Atoi(lessonAndId[1])
+
+		if err != nil {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		state.Data = editLessonData{
+			LessonId: lessonId,
+		}
+		ctx.SetValue(userId, state)
+
+		btns := utils.BuildInlineKeyboard([]string{
+			date,
+			time,
+			max,
+			description,
+		})
+
+		bot.SendMessage(t.Message{
+			ChatId:      userId,
+			Text:        "What do you want to edit?",
+			ReplyMarkup: btns,
+		})
+	case 3:
+		if u.CallbackQuery == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			ctx.End(userId)
+			return
+		}
+
+		stateData := state.Data.(editLessonData)
+		stateData.Type = u.CallbackQuery.Data
+		state.Data = stateData
+		ctx.SetValue(userId, state)
+		text := ""
+
+		switch stateData.Type {
+		case date:
+			text = "Send a <b>date</b> in the format YYYY-MM-DD"
+		case time:
+			text = "Send a <b>time</b> in the format HH:MM"
+		case description:
+			text = "Send a <b>description</b> text"
+		case max:
+			text = "Send a <b>max membership</b> number"
+		}
+
+		bot.SendHTML(userId, text)
+	case 4:
+		if u.Message == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			return
+		}
+
+		isValidValue := false
+		value := u.Message.Text
+		lessonData := state.Data.(editLessonData)
+
+		switch lessonData.Type {
+		case date:
+			if utils.DateRegexp().Match([]byte(value)) {
+				isValidValue = true
+				controller.UpdateLessonDate(db, lessonData.LessonId, value)
+			}
+		case time:
+			if utils.TimeRegexp().Match([]byte(value)) {
+				isValidValue = true
+				controller.UpdateLessonTime(db, lessonData.LessonId, value)
+			}
+		case description:
+			if len(value) > 0 {
+				isValidValue = true
+				controller.UpdateLessonDesc(db, lessonData.LessonId, value)
+			}
+		case max:
+			maxInt, err := strconv.Atoi(value)
+
+			if err == nil {
+				isValidValue = true
+				controller.UpdateLessonMax(db, lessonData.LessonId, maxInt)
+			}
+		}
+
+		if isValidValue {
+			bot.SendText(userId, utils.GoodJob)
+		} else {
+			bot.SendText(userId, utils.WrongMsg)
+		}
+
+		ctx.End(userId)
+		return
+	}
+
+	ctx.Next(userId)
 }

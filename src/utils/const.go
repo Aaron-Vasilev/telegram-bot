@@ -18,6 +18,7 @@ const (
 	NotifyAboutLessons = "Notify about lessons 💬"
 	FreezeMembership   = "Freeze memberships ❄️"
 	ForwardAll         = "Forward all 💌"
+	EditLesson         = "Edit lesson ✏️"
 
 	// Inline keyboard
 	ChangeEmoji = "Change emoji"
@@ -51,13 +52,14 @@ var (
 		Profile:     Profile,
 		Contact:     Contact,
 	}
-	AdminKeyboard = map[string]string{
-		SignStudents:       SignStudents,
-		AddLessons:         AddLessons,
-		AssignMembership:   AssignMembership,
-		NotifyAboutLessons: NotifyAboutLessons,
-		FreezeMembership:      FreezeMembership,
-		ForwardAll:         ForwardAll,
+	AdminKeyboard = []string{
+		AddLessons,
+		AssignMembership,
+		EditLesson,
+		ForwardAll,
+		FreezeMembership,
+		NotifyAboutLessons,
+		SignStudents,
 	}
 
 	// Inline keyboard

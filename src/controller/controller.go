@@ -315,3 +315,27 @@ func GetUsersAttandance(db *sql.DB, from time.Time, until time.Time) []t.UserAtt
 
 	return users
 }
+
+func UpdateLessonDate(db *sql.DB, lessonId int, date string) {
+	query := `UPDATE yoga.lesson SET date=$1 WHERE id=$2`
+
+	db.Query(query, date, lessonId)
+}
+
+func UpdateLessonTime(db *sql.DB, lessonId int, time string) {
+	query := `UPDATE yoga.lesson SET time=$1 WHERE id=$2`
+
+	db.Query(query, time, lessonId)
+}
+
+func UpdateLessonDesc(db *sql.DB, lessonId int, description string) {
+	query := `UPDATE yoga.lesson SET description=$1 WHERE id=$2`
+
+	db.Query(query, description, lessonId)
+}
+
+func UpdateLessonMax(db *sql.DB, lessonId int, max int) {
+	query := `UPDATE yoga.lesson SET max=$1 WHERE id=$2`
+
+	db.Query(query, max, lessonId)
+}

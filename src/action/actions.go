@@ -13,7 +13,7 @@ import (
 func SendTimetable(bot *bot.Bot, db *sql.DB, upd t.Update) {
 	lessons := controller.GetAvaliableLessons(db)
 
-	msg := utils.GenerateTimetable(lessons, false)
+	msg := utils.GenerateTimetableMsg(lessons, false)
 	msg.ChatId = upd.FromChat().ID
 
 	bot.SendMessage(msg)
@@ -83,9 +83,8 @@ func SendLeaderboard(bot *bot.Bot, db *sql.DB, chatId int64) {
 func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 	var keyboard [][]t.KeyboardButton
 	btns := make([]t.KeyboardButton, 2)
-	i := 0
 
-	for key := range utils.AdminKeyboard {
+	for i, key := range utils.AdminKeyboard {
 		position := i % 2
 
 		btns[position] = t.KeyboardButton{
@@ -97,7 +96,10 @@ func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 			btns = make([]t.KeyboardButton, 2)
 		}
 
-		i++
+	}
+
+	if btns[1].Text == "" {
+		keyboard = append(keyboard, btns)
 	}
 
 	replyKeyboard := t.ReplyKeyboardMarkup{

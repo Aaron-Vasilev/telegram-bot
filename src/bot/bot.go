@@ -12,9 +12,10 @@ import (
 )
 
 type Bot struct {
-	Token   string
-	IsDebug bool
-	Offset  int
+	Token    string
+	IsDebug  bool
+	LogLevel int
+	Offset   int
 }
 
 func (bot *Bot) GetMe() t.TBot {
@@ -95,9 +96,9 @@ func (bot *Bot) Error(text string) {
 		userId, err := strconv.ParseInt(os.Getenv("ERROR_CHAT_ID"), 10, 64)
 
 		if err == nil {
-			fmt.Println("No ERROR_CHAT_ID")
-		} else {
 			bot.SendText(userId, text)
+		} else {
+			fmt.Println("No ERROR_CHAT_ID")
 		}
 	}
 }

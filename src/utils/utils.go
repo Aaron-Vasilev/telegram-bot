@@ -25,7 +25,7 @@ func LoadEnv() {
 	}
 }
 
-func GenerateTimetable(lessons []t.Lesson, showId bool) t.Message {
+func GenerateTimetableMsg(lessons []t.Lesson, showId bool) t.Message {
 	var buttons [][]t.InlineKeyboardButton
 
 	for _, l := range lessons {
@@ -43,7 +43,7 @@ func GenerateTimetable(lessons []t.Lesson, showId bool) t.Message {
 
 		button = append(button, t.InlineKeyboardButton{
 			Text:         label,
-			CallbackData: fmt.Sprintf("SHOW_LESSON=%d", l.ID),
+			CallbackData: fmt.Sprintf("LESSON=%d", l.ID),
 		})
 		buttons = append(buttons, button)
 	}
@@ -243,7 +243,7 @@ type ValidatedLesson struct {
 	Max         string
 }
 
-func ValidateLessonMsg(s string) ValidatedLesson {
+func ValidateLessonStr(s string) ValidatedLesson {
 	var lesson ValidatedLesson
 
 	splited := strings.Split(s, "\n")
@@ -257,9 +257,9 @@ func ValidateLessonMsg(s string) ValidatedLesson {
 	}
 
 	if len(splited[2]) == 0 ||
-		!regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`).Match([]byte(splited[0])) ||
-		!regexp.MustCompile(`^\d{2}:\d{2}$`).Match([]byte(splited[1])) ||
-		!regexp.MustCompile(`^\d+$`).Match([]byte(splited[3])) {
+		!DateRegexp().Match([]byte(splited[0])) ||
+		!TimeRegexp().Match([]byte(splited[1])) ||
+		!NumRegexp().Match([]byte(splited[3])) {
 		return lesson
 	}
 
@@ -333,7 +333,7 @@ func BuildInlineKeyboard(vals []string) t.InlineKeyboardMarkup {
 
 	for _, val := range vals {
 		btns = append(btns, t.InlineKeyboardButton{
-			Text: val,
+			Text:         val,
 			CallbackData: val,
 		})
 	}
@@ -343,4 +343,20 @@ func BuildInlineKeyboard(vals []string) t.InlineKeyboardMarkup {
 			btns,
 		},
 	}
+}
+
+func LessonRegexp() *regexp.Regexp {
+	return regexp.MustCompile(`^LESSON=\d+$`)
+}
+
+func DateRegexp() *regexp.Regexp {
+	return regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+}
+
+func TimeRegexp() *regexp.Regexp {
+	return regexp.MustCompile(`^\d{2}:\d{2}$`)
+}
+
+func NumRegexp() *regexp.Regexp {
+	return regexp.MustCompile(`^\d+$`)
 }
