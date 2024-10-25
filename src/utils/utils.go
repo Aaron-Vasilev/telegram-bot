@@ -360,3 +360,7 @@ func TimeRegexp() *regexp.Regexp {
 func NumRegexp() *regexp.Regexp {
 	return regexp.MustCompile(`^\d+$`)
 }
+
+func FullName(firstName, lastName string) string {
+	return strings.Trim(fmt.Sprintf("%s %s", firstName, lastName), " ")
+}

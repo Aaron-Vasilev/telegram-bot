@@ -334,8 +334,18 @@ func UpdateLessonDesc(db *sql.DB, lessonId int, description string) {
 	db.Query(query, description, lessonId)
 }
 
-func UpdateLessonMax(db *sql.DB, lessonId int, max int) {
+func UpdateLessonMax(db *sql.DB, lessonId, max int) {
 	query := `UPDATE yoga.lesson SET max=$1 WHERE id=$2`
 
 	db.Query(query, max, lessonId)
+}
+
+func UpdateUserBio(db *sql.DB, userId int64, userName, fullName string) {
+	query := `UPDATE yoga.user SET username=$1, name=$2 WHERE id=$3;`
+
+	_, err := db.Exec(query, userName, fullName, userId)
+
+	if err != nil {
+		fmt.Println("✡️  line 348 err", err)
+	}
 }

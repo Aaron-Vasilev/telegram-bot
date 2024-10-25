@@ -8,7 +8,6 @@ import (
 	"bot/src/utils"
 	t "bot/src/utils/types"
 	"database/sql"
-	"fmt"
 	"regexp"
 	"strings"
 )
@@ -65,8 +64,8 @@ func handleMenu(bot *bot.Bot, db *sql.DB, u t.Update) {
 			user = *u.Message.From
 		}
 
-		name := strings.Trim(fmt.Sprintf("%s %s", user.FirstName, user.LastName), " ")
-		controller.SaveUser(db, user.ID, user.UserName, name)
+		fullName := utils.FullName(user.FirstName, user.LastName)
+		controller.SaveUser(db, user.ID, user.UserName, fullName)
 		action.SendKeyboard(bot, user.ID, utils.GreetingMsg)
 	}
 }

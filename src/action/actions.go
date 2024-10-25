@@ -149,9 +149,20 @@ func SendKeyboard(bot *bot.Bot, chatId int64, text string) {
 }
 
 func SendLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
-	lesson := controller.GetLessonWithUsers(db, u.CallbackQuery.Data)
+	lessonWithUsers := controller.GetLessonWithUsers(db, u.CallbackQuery.Data)
+	chat := u.FromChat()
 
-	msg := utils.GenerateLessonMessage(lesson, u.FromChat().ID)
+	for _, user := range lessonWithUsers {
+		if *user.UserId == chat.ID {
+			fullName := utils.FullName(chat.FirstName, chat.LastName) 
+
+			if user.Username != &chat.UserName || fullName != *user.Name  {
+				controller.UpdateUserBio(db, chat.ID, chat.UserName, fullName)
+			}
+		}
+	}
+
+	msg := utils.GenerateLessonMessage(lessonWithUsers, u.FromChat().ID)
 
 	bot.SendMessage(msg)
 }
