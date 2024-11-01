@@ -117,7 +117,7 @@ func yogis(lessons []t.LessonWithUsers) string {
 				name = "@" + *l.Username
 			}
 
-			students += fmt.Sprintf("\n%d. %s", i+1, name)
+			students += fmt.Sprintf("\n%d. %s %s", i+1, name, *l.Emoji)
 			registered++
 		}
 	}
