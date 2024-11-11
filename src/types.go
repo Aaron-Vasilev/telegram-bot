@@ -1,4 +1,4 @@
-package t
+package bot
 
 import (
 	"encoding/json"

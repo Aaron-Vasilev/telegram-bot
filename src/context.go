@@ -1,4 +1,4 @@
-package scene
+package bot
 
 import (
 	"context"
@@ -63,7 +63,7 @@ func (s *Ctx) SetValue(userId int64, state SceneState) {
 	s.Ctx = context.WithValue(s.Ctx, sceneKey, sMap)
 }
 
-func NewSceneContext() Ctx {
+func newSceneContext() Ctx {
 	ctx := context.Background()
 	defer ctx.Done()
 
