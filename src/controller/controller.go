@@ -349,3 +349,21 @@ func UpdateUserBio(db *sql.DB, userId int64, userName, fullName string) {
 		fmt.Println("✡️  line 348 err", err)
 	}
 }
+
+func IsLessonSigned(db *sql.DB, lessonId int) bool {
+	var id int
+	query := "SELECT id FROM yoga.attendance WHERE lesson_id=$1 limit 1;"
+
+	err := db.QueryRow(query, lessonId).Scan(&id)
+
+	if err == sql.ErrNoRows {
+		return false
+	}
+
+	if err != nil {
+		fmt.Println("✡️  line 363 err", err)
+		return false
+	}
+
+	return true
+}

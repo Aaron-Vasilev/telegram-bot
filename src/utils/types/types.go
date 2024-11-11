@@ -27,10 +27,10 @@ type Lesson struct {
 }
 
 type LessonWithUsers struct {
-	UserId      *int64
-	Name        *string
+	UserId      int64
+	Name        string
 	Username    *string
-	Emoji       *string
+	Emoji       string
 	LessonId    int
 	Date        time.Time
 	Time        time.Time

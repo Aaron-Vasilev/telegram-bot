@@ -73,7 +73,7 @@ func GenerateLessonMessage(lessons []t.LessonWithUsers, userId int64) t.Message 
 	isUserInLesson := false
 
 	for _, l := range lessons {
-		if l.UserId != nil && *l.UserId == userId {
+		if l.UserId == userId {
 			isUserInLesson = true
 			break
 		}
@@ -109,17 +109,15 @@ func yogis(lessons []t.LessonWithUsers) string {
 	registered := 0
 	students := ""
 
-	if lessons[0].UserId != nil {
-		for i, l := range lessons {
-			name := *l.Name
+	for i, l := range lessons {
+		name := l.Name
 
-			if l.Username != nil {
-				name = "@" + *l.Username
-			}
-
-			students += fmt.Sprintf("\n%d. %s %s", i+1, name, *l.Emoji)
-			registered++
+		if l.Username != nil {
+			name = "@" + *l.Username
 		}
+
+		students += fmt.Sprintf("\n%d. %s %s", i+1, name, l.Emoji)
+		registered++
 	}
 
 	yogs := fmt.Sprintf("Booked: <b>%d</b>/%d", registered, lessons[0].Max)

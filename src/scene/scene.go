@@ -66,13 +66,19 @@ func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			return
 		}
 
-		//TODO receive a and lessonId from CallbackQuery
+		//TODO receive a lessonId also from CallbackQuery
 		lessonId, err := strconv.Atoi(u.Message.Text)
 
 		if err != nil {
 			bot.SendText(userId, "The ID is not correct")
 			ctx.End(userId)
 			return
+		}
+
+		wasLessonSigned := controller.IsLessonSigned(db, lessonId)
+
+		if wasLessonSigned {
+			bot.SendText(userId, "This lesson was signed⚠️")
 		}
 
 		registered := controller.GetRegisteredOnLesson(db, lessonId)

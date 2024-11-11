@@ -153,10 +153,10 @@ func SendLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
 	chat := u.FromChat()
 
 	for _, user := range lessonWithUsers {
-		if user.UserId != nil && *user.UserId == chat.ID {
+		if user.UserId == chat.ID {
 			fullName := utils.FullName(chat.FirstName, chat.LastName) 
 
-			if user.Username != &chat.UserName || fullName != *user.Name  {
+			if user.Username != &chat.UserName || fullName != user.Name  {
 				controller.UpdateUserBio(db, chat.ID, chat.UserName, fullName)
 			}
 		}
