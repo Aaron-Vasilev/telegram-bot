@@ -1,3 +1,3 @@
-module github.com/Aaron-Vasilev/telegram-bot
+module github.com/aaron-vasilev/telegram-bot
 
 go 1.23
