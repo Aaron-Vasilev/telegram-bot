@@ -35,8 +35,7 @@ func GetAvaliableLessons(db *sql.DB) []t.Lesson {
 	return lessons
 }
 
-func GetLessonWithUsers(db *sql.DB, callBackData string) []t.LessonWithUsers {
-	var lessons []t.LessonWithUsers
+func GetLessonWithUsers(db *sql.DB, callBackData string) (*t.LessonWithUsers, error) {
 	query := `SELECT u.id, username, name, emoji, l.id, time, date, description, max
 		FROM yoga.lesson l LEFT JOIN yoga.registered_users r ON l.id = r.lesson_id
 		LEFT JOIN yoga.user u ON u.id = ANY(r.registered) WHERE l.id=$1;`
@@ -44,26 +43,55 @@ func GetLessonWithUsers(db *sql.DB, callBackData string) []t.LessonWithUsers {
 	data := strings.Split(callBackData, "=")
 
 	rows, err := db.Query(query, data[1])
-
-	if err == nil {
-		for rows.Next() {
-			var l t.LessonWithUsers
-
-			err := rows.Scan(
-				&l.UserId, &l.Username, &l.Name, &l.Emoji,
-				&l.LessonId, &l.Time, &l.Date, &l.Description, &l.Max,
-			)
-
-			if err != nil {
-				fmt.Println("✡️  line 51 err", err)
-			}
-
-			lessons = append(lessons, l)
-		}
-	}
 	defer rows.Close()
 
-	return lessons
+	if err != nil {
+		return nil, err
+	}
+
+	var l t.Lesson
+	var users []t.UserDB
+	initializedLesson := false
+
+	for rows.Next() {
+		var user t.UserDB
+		var userId sql.NullInt64
+		var username sql.NullString
+		var name sql.NullString
+		var emoji sql.NullString
+
+		err := rows.Scan(
+			&userId, &username, &name, &emoji,
+			&l.ID, &l.Time, &l.Date, &l.Description, &l.Max,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("✡️  line 51 err", err)
+		}
+
+		if userId.Valid {
+			user.ID = userId.Int64
+			user.Username = &username.String
+			user.Name = name.String
+			user.Emoji = emoji.String
+		}
+
+		if user.ID != 0 {
+			users = append(users, user)
+		}
+
+		// Initialize lesson only once
+		if !initializedLesson {
+			initializedLesson = true
+		}
+	}
+
+	defer rows.Close()
+
+	return &t.LessonWithUsers{
+		Lesson: l,
+		Users:  users,
+	}, nil
 }
 
 func ToggleUserInLesson(db *sql.DB, u t.Update) string {

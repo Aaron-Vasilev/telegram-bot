@@ -1,7 +1,6 @@
 package t
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,7 +14,7 @@ type CustomError struct {
 type UserDB struct {
 	ID       int64
 	Name     string
-	Username sql.NullString
+	Username *string
 	Emoji    string
 }
 type Lesson struct {
@@ -27,15 +26,8 @@ type Lesson struct {
 }
 
 type LessonWithUsers struct {
-	UserId      int64
-	Name        string
-	Username    *string
-	Emoji       string
-	LessonId    int
-	Date        time.Time
-	Time        time.Time
-	Description string
-	Max         int
+	Users  []UserDB
+	Lesson Lesson
 }
 
 type Membership struct {
