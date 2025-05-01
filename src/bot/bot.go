@@ -70,10 +70,12 @@ func (bot *Bot) SendSticker(chatId int64, stickerId string) {
 	Send(bot, "/sendSticker", msg)
 }
 
-func (bot *Bot) SendPhotoById(chatId int64, fileId string) {
+func (bot *Bot) SendPhotoById(chatId int64, fileId, caption string) {
 	msg := t.Message{
 		ChatId: chatId,
 		Photo:  fileId,
+		Caption: caption,
+		ParseMode: "html",
 	}
 
 	Send(bot, "/sendPhoto", msg)
