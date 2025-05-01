@@ -180,9 +180,7 @@ func RegisterForLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
 }
 
 func SendHowToFind(bot *bot.Bot, db *sql.DB, u t.Update) {
-	bot.SendLocation(u.FromChat().ID, 32.05382162148281, 34.75493749973202)
-	bot.SendPhotoById(u.FromChat().ID, "AgACAgIAAxkBAAIVsWbZqoIj1U0WQMX97pezh8NPrvS1AAI03zEb_QAB0EqIuOgvJ2h8SQEAAwIAA3MAAzYE")
-	bot.SendPhotoById(u.FromChat().ID, "AgACAgIAAxkBAAIVwWbZ5AiqC497NDhWORiJd5oLx6oqAALZ4DEb_QAB0Eojpa9wdlTtSQEAAwIAA3kAAzYE")
+	bot.SendLocation(u.FromChat().ID, 32.049304, 34.752149)
 }
 
 func NotifyAboutSubscriptionEnds(bot *bot.Bot, db *sql.DB) {
