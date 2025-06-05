@@ -62,18 +62,18 @@ func GenerateTimetableMsg(lessons []t.Lesson, showId bool) t.Message {
 	}
 }
 
-func GenerateLessonMessage(lessons []t.LessonWithUsers, userId int64) t.Message {
+func GenerateLessonMessage(lesson t.LessonWithUsers, userId int64) t.Message {
 	var msg t.Message
 	var buttons [][]t.InlineKeyboardButton
 	var button []t.InlineKeyboardButton
-	weekday := lessons[0].Date.Format("Mon")
-	date := lessons[0].Date.Format("02/01")
-	time := lessons[0].Time.Format("15:04")
-	description := lessons[0].Description
+	weekday := lesson.Date.Format("Mon")
+	date := lesson.Date.Format("02/01")
+	time := lesson.Time.Format("15:04")
+	description := lesson.Description
 	isUserInLesson := false
 
-	for _, l := range lessons {
-		if l.UserId == userId {
+	for _, u := range lesson.Users {
+		if u.ID == userId {
 			isUserInLesson = true
 			break
 		}
@@ -82,12 +82,12 @@ func GenerateLessonMessage(lessons []t.LessonWithUsers, userId int64) t.Message 
 	if isUserInLesson {
 		button = append(button, t.InlineKeyboardButton{
 			Text:         "Unregister from the lesson",
-			CallbackData: fmt.Sprintf("UNREGISTER=%d", lessons[0].LessonId),
+			CallbackData: fmt.Sprintf("UNREGISTER=%d", lesson.LessonId),
 		})
 	} else {
 		button = append(button, t.InlineKeyboardButton{
 			Text:         "Register for the lesson",
-			CallbackData: fmt.Sprintf("REGISTER=%d", lessons[0].LessonId),
+			CallbackData: fmt.Sprintf("REGISTER=%d", lesson.LessonId),
 		})
 	}
 	buttons = append(buttons, button)
@@ -95,7 +95,7 @@ func GenerateLessonMessage(lessons []t.LessonWithUsers, userId int64) t.Message 
 	msg.ChatId = userId
 	msg.Text = fmt.Sprintf(
 		"%s 🚀 %s 🚀 %s 🕒\n%s\n\n%s",
-		weekday, date, time, description, yogis(lessons),
+		weekday, date, time, description, yogis(lesson),
 	)
 	msg.ParseMode = "html"
 	msg.ReplyMarkup = t.InlineKeyboardMarkup{
@@ -105,22 +105,22 @@ func GenerateLessonMessage(lessons []t.LessonWithUsers, userId int64) t.Message 
 	return msg
 }
 
-func yogis(lessons []t.LessonWithUsers) string {
+func yogis(lesson t.LessonWithUsers) string {
 	registered := 0
 	students := ""
 
-	for i, l := range lessons {
+	for i, l := range lesson.Users {
 		name := l.Name
 
-		if l.Username != nil {
-			name = "@" + *l.Username
+		if l.Username.Valid {
+			name = "@" + l.Username.String
 		}
 
 		students += fmt.Sprintf("\n%d. %s %s", i+1, name, l.Emoji)
 		registered++
 	}
 
-	yogs := fmt.Sprintf("Booked: <b>%d</b>/%d", registered, lessons[0].Max)
+	yogs := fmt.Sprintf("Booked: <b>%d</b>/%d", registered, lesson.Max)
 
 	return yogs + students
 }

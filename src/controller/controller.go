@@ -35,8 +35,8 @@ func GetAvaliableLessons(db *sql.DB) []t.Lesson {
 	return lessons
 }
 
-func GetLessonWithUsers(db *sql.DB, callBackData string) []t.LessonWithUsers {
-	var lessons []t.LessonWithUsers
+func GetLessonWithUsers(db *sql.DB, callBackData string) (t.LessonWithUsers, error) {
+	var lesson t.LessonWithUsers
 	query := `SELECT u.id, username, name, emoji, l.id, time, date, description, max
 		FROM yoga.lesson l LEFT JOIN yoga.registered_users r ON l.id = r.lesson_id
 		LEFT JOIN yoga.user u ON u.id = ANY(r.registered) WHERE l.id=$1;`
@@ -47,23 +47,32 @@ func GetLessonWithUsers(db *sql.DB, callBackData string) []t.LessonWithUsers {
 
 	if err == nil {
 		for rows.Next() {
-			var l t.LessonWithUsers
+			var userId sql.NullInt64
+			var username sql.NullString
+			var name sql.NullString
+			var emoji sql.NullString
 
 			err := rows.Scan(
-				&l.UserId, &l.Username, &l.Name, &l.Emoji,
-				&l.LessonId, &l.Time, &l.Date, &l.Description, &l.Max,
+				&userId, &username, &name, &emoji,
+				&lesson.LessonId, &lesson.Time, &lesson.Date, &lesson.Description, &lesson.Max,
 			)
 
-			if err != nil {
-				fmt.Println("✡️  line 51 err", err)
-			}
 
-			lessons = append(lessons, l)
+			if err != nil {
+				return lesson, err
+			} else if userId.Valid {
+				lesson.Users = append(lesson.Users, t.UserDB{
+					ID: userId.Int64,
+					Username: username,
+					Name: name.String,
+					Emoji: emoji.String,
+				})
+			}
 		}
 	}
 	defer rows.Close()
 
-	return lessons
+	return lesson, nil
 }
 
 func ToggleUserInLesson(db *sql.DB, u t.Update) string {
