@@ -651,6 +651,8 @@ type Message struct {
 	// optional
 	Latitude  float32 `json:"latitude,omitempty"`
 	Longitude float32 `json:"longitude,omitempty"`
+	// optional
+	Action  string `json:"action,omitempty"`
 }
 
 // Time converts the message timestamp into a Time.

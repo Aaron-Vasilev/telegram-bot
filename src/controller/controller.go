@@ -102,7 +102,7 @@ func SaveUser(db *sql.DB, id int64, username string, name string) {
 	query := `
 	INSERT INTO yoga.user (id, username, name) VALUES ($1, $2, $3)
 	ON CONFLICT(id) DO UPDATE SET
-	username = EXCLUDED.username, name = EXCLUDED.name;`
+	username = EXCLUDED.username, name = EXCLUDED.name, is_blocked = false;`
 
 	db.Query(query, id, username, name)
 	//Notification for a Teacher if the user is new
@@ -127,7 +127,7 @@ func GetAllUsersWithMemLatest(db *sql.DB) []t.UserMembership {
 	query := `
 	SELECT u.id, username, name, emoji, starts, ends, type, lessons_avaliable
 	FROM yoga.user u LEFT JOIN yoga.membership m ON u.id = m.user_id 
-	WHERE m.ends >= NOW() - INTERVAL '2 months';`
+	WHERE m.ends >= NOW() - INTERVAL '2 months' AND is_blocked = false;`
 
 	rows, err := db.Query(query)
 
@@ -233,7 +233,7 @@ WHERE lesson_id=$1;`
 func GetUsersIDs(db *sql.DB) []int64 {
 	var ids []int64
 
-	rows, err := db.Query("SELECT id FROM yoga.user;")
+	rows, err := db.Query("SELECT id FROM yoga.user WHERE is_blocked = false;")
 	defer rows.Close()
 
 	if err == nil {
@@ -366,4 +366,15 @@ func IsLessonSigned(db *sql.DB, lessonId int) bool {
 	}
 
 	return true
+}
+
+func BlockUsers(db *sql.DB, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	query := "UPDATE yoga.user SET is_blocked = true WHERE id = ANY($1);"
+
+	_, err := db.Exec(query, pq.Int64Array(ids))
+
+	return err
 }

@@ -2,15 +2,15 @@ package t
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-type CustomError struct {
-	Message string
-	Error   error
-}
+var (
+	BotIsBlockedError = errors.New("Bot is blocked")
+)
 
 type UserDB struct {
 	ID       int64

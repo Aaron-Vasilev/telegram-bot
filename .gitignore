@@ -2,3 +2,4 @@
 pg_cmd
 *.pem
 tmp
+query.sql

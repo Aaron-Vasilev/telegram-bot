@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Bot struct {
@@ -51,14 +52,14 @@ func (bot *Bot) SendHTML(chatId int64, text string) {
 	Send(bot, "/sendMessage", msg)
 }
 
-func (bot *Bot) Forward(chatId, fromChatId int64, msgId int) {
+func (bot *Bot) Forward(chatId, fromChatId int64, msgId int) (*http.Response, error) {
 	msg := t.Message{
 		ChatId:     chatId,
 		MessageID:  msgId,
 		FromChatID: fromChatId,
 	}
 
-	Send(bot, "/forwardMessage", msg)
+	return Send(bot, "/forwardMessage", msg)
 }
 
 func (bot *Bot) SendSticker(chatId int64, stickerId string) {
@@ -103,7 +104,7 @@ func (bot *Bot) Error(text string) {
 	}
 }
 
-func Send(bot *Bot, method string, msg t.Message) {
+func Send(bot *Bot, method string, msg t.Message) (*http.Response, error) {
 	var resData t.Response[t.Message]
 	jsonData, err := json.Marshal(msg)
 
@@ -119,7 +120,7 @@ func Send(bot *Bot, method string, msg t.Message) {
 
 	if err != nil {
 		bot.Error("Error making the request:" + err.Error())
-		return
+		return nil, err
 	}
 	defer res.Body.Close()
 
@@ -127,7 +128,11 @@ func Send(bot *Bot, method string, msg t.Message) {
 
 	if err != nil {
 		bot.Error("Error while ioutil.ReadAll:" + err.Error())
-		return
+		return nil, err
+	}
+
+	if res.StatusCode == http.StatusBadRequest && isBotBlocked(body) {
+		return nil, t.BotIsBlockedError
 	}
 
 	if bot.IsDebug {
@@ -143,6 +148,8 @@ func Send(bot *Bot, method string, msg t.Message) {
 			fmt.Println("Messages SEND: ", string(s))
 		}
 	}
+
+	return res, nil
 }
 
 func Call[T any](bot *Bot, method string) T {
@@ -178,4 +185,20 @@ func Call[T any](bot *Bot, method string) T {
 	}
 
 	return resData.Result
+}
+
+func (bot *Bot) SendAction(chatId int64, action string) (*http.Response, error) {
+	msg := t.Message{
+		ChatId: chatId,
+		Action: action,
+	}
+
+	return Send(bot, "/sendLocation", msg)
+}
+
+func isBotBlocked(body []byte) bool {
+	if strings.Contains(string(body), "Bad Request: chat not found") {
+		return true
+	}
+	return false
 }

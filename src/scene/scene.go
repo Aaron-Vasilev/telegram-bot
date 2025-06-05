@@ -562,11 +562,24 @@ func ForwardAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		}
 
 		if u.CallbackQuery.Data == "YES" {
+			var idsToBlock []int64
 			ids := controller.GetUsersIDs(db)
 
 			for i := range ids {
-				go bot.Forward(ids[i], userID, messageID)
+				_, err := bot.Forward(ids[i], userID, messageID)
+
+				if err == t.BotIsBlockedError {
+					idsToBlock = append(idsToBlock, ids[i])
+				}
 			}
+			err := controller.BlockUsers(db, idsToBlock)
+
+			if err != nil {
+				bot.Error("Forward all err: " + err.Error())
+			}
+			bot.SendText(userID, fmt.Sprintf("Great success, %d blocked yoga bot", len(idsToBlock)))
+		} else {
+			bot.SendText(userID, "Ok")
 		}
 		ctx.End(userID)
 		return
