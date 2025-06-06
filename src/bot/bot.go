@@ -202,3 +202,12 @@ func isBotBlocked(body []byte) bool {
 	}
 	return false
 }
+
+func (bot *Bot) SendMediaGroup(chatId int64, media []t.InputMediaPhoto) (*http.Response, error) {
+	msg := t.Message{
+		ChatId: chatId,
+		Media: media,
+	}
+
+	return Send(bot, "/SendMediaGroup", msg)
+}

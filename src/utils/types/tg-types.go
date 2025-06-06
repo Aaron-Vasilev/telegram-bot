@@ -653,6 +653,7 @@ type Message struct {
 	Longitude float32 `json:"longitude,omitempty"`
 	// optional
 	Action  string `json:"action,omitempty"`
+	Media []InputMediaPhoto `json:"media,omitempty"`
 }
 
 // Time converts the message timestamp into a Time.
@@ -1877,6 +1878,8 @@ type BaseInputMedia struct {
 	// using multipart/form-data under <file_attach_name> name.
 	// 	Media RequestFileData `json:"media"`
 	// thumb intentionally missing as it is not currently compatible
+
+	Media string `json:"media"`
 
 	// Caption of the video to be sent, 0-1024 characters after entities parsing.
 	//
