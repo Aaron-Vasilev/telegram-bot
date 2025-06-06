@@ -8,7 +8,11 @@ import (
 )
 
 func sendUserList(ctx *Ctx, db *sql.DB, bot *bot.Bot, userID int64, search string) {
-	users := controller.FindUsersByName(db, search)
+	users, err := controller.FindUsersByName(db, search)
+
+	if err != nil {
+		bot.Error("find users by name error:" + err.Error())
+	}
 
 	if len(users) == 0 {
 		bot.SendText(userID, "There are no users like: "+search)
@@ -19,8 +23,8 @@ func sendUserList(ctx *Ctx, db *sql.DB, bot *bot.Bot, userID int64, search strin
 	for i := range users {
 		userName := ""
 
-		if users[i].Username.Valid {
-			userName = "@" + users[i].Username.String
+		if users[i].Username != "" {
+			userName = "@" + users[i].Username
 		}
 		bot.SendText(userID, fmt.Sprintf("%s %s ID = %d", users[i].Name, userName, users[i].ID))
 	}

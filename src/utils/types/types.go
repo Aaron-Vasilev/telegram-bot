@@ -1,7 +1,6 @@
 package t
 
 import (
-	"database/sql"
 	"errors"
 	"time"
 
@@ -15,8 +14,9 @@ var (
 type UserDB struct {
 	ID       int64
 	Name     string
-	Username sql.NullString
+	Username string
 	Emoji    string
+	IsBlocked bool
 }
 type Lesson struct {
 	ID          int

@@ -37,8 +37,8 @@ func SendContact(bot *bot.Bot, u t.Update) {
 	})
 
 	bot.SendMessage(t.Message{
-		ChatId:    u.FromChat().ID,
-		Photo: "https://bot-telega.s3.il-central-1.amazonaws.com/door.jpg",
+		ChatId: u.FromChat().ID,
+		Photo:  "https://bot-telega.s3.il-central-1.amazonaws.com/door.jpg",
 	})
 }
 
@@ -80,7 +80,11 @@ func SendLeaderboard(bot *bot.Bot, db *sql.DB, chatId int64) {
 	firstDayNextMonth := time.Date(nextMonthYear, nextMonth, 1, 0, 0, 0, 0, now.Location())
 	lastDay := firstDayNextMonth.AddDate(0, 0, -1)
 
-	usersWithCount := controller.GetUsersAttandance(db, firstDay, lastDay)
+	usersWithCount, err := controller.GetUsersAttandance(db, firstDay, lastDay)
+
+	if err != nil {
+		bot.Error("send leaderboard error: " + err.Error())
+	}
 
 	bot.SendHTML(chatId, utils.LeaderboardText(usersWithCount, chatId))
 }
@@ -163,9 +167,9 @@ func SendLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
 
 	for _, user := range lessonWithUsers.Users {
 		if user.ID == chat.ID {
-			fullName := utils.FullName(chat.FirstName, chat.LastName) 
+			fullName := utils.FullName(chat.FirstName, chat.LastName)
 
-			if (user.Username.Valid && user.Username.String != chat.UserName) || fullName != user.Name  {
+			if (user.Username != "" && user.Username != chat.UserName) || fullName != user.Name {
 				controller.UpdateUserBio(db, chat.ID, chat.UserName, fullName)
 			}
 		}
@@ -187,19 +191,19 @@ func SendHowToFind(bot *bot.Bot, db *sql.DB, u t.Update) {
 	media := []t.InputMediaPhoto{
 		{
 			BaseInputMedia: t.BaseInputMedia{
-				Type: "photo",
-				Media: "https://bot-telega.s3.il-central-1.amazonaws.com/entrence.jpg",
+				Type:    "photo",
+				Media:   "https://bot-telega.s3.il-central-1.amazonaws.com/entrence.jpg",
 				Caption: "Пожалуйста не смотрите в окна🪟❌👀 к нашим соседям, они оченьстесняются🫣",
 			},
 		},
 		{
 			BaseInputMedia: t.BaseInputMedia{
-				Type: "photo",
+				Type:  "photo",
 				Media: "https://bot-telega.s3.il-central-1.amazonaws.com/door.jpg",
 			},
 		},
 	}
-	
+
 	bot.SendMediaGroup(u.FromChat().ID, media)
 }
 

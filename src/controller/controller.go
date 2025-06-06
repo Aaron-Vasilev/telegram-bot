@@ -57,15 +57,14 @@ func GetLessonWithUsers(db *sql.DB, callBackData string) (t.LessonWithUsers, err
 				&lesson.LessonId, &lesson.Time, &lesson.Date, &lesson.Description, &lesson.Max,
 			)
 
-
 			if err != nil {
 				return lesson, err
 			} else if userId.Valid {
 				lesson.Users = append(lesson.Users, t.UserDB{
-					ID: userId.Int64,
-					Username: username,
-					Name: name.String,
-					Emoji: emoji.String,
+					ID:       userId.Int64,
+					Username: username.String,
+					Name:     name.String,
+					Emoji:    emoji.String,
 				})
 			}
 		}
@@ -178,28 +177,35 @@ func AddLesson(db *sql.DB, l utils.ValidatedLesson) {
 	db.Exec(query, id, pq.Array([]int{}))
 }
 
-func FindUsersByName(db *sql.DB, name string) []t.UserDB {
+func FindUsersByName(db *sql.DB, name string) ([]t.UserDB, error) {
 	var users []t.UserDB
 	query := `SELECT * FROM yoga.user WHERE name ILIKE '%' || $1 || '%' OR username ILIKE '%' || $1 || '%';`
 
 	rows, err := db.Query(query, name)
 
-	if err == nil {
-		for rows.Next() {
-			var u t.UserDB
+	if err != nil {
+		return users, err
+	}
 
-			err := rows.Scan(&u.ID, &u.Username, &u.Name, &u.Emoji)
+	for rows.Next() {
+		var u t.UserDB
+		var username sql.NullString
 
-			if err != nil {
-				fmt.Println("✡️  line 171 err", err)
-			}
+		err := rows.Scan(&u.ID, &username, &u.Name, &u.Emoji, &u.IsBlocked)
 
-			users = append(users, u)
+		if err != nil {
+			return users, nil
 		}
+
+		if username.Valid {
+			u.Username = username.String
+		}
+
+		users = append(users, u)
 	}
 	defer rows.Close()
 
-	return users
+	return users, nil
 }
 
 func UpdateMembership(db *sql.DB, userId int64, memType int) t.Membership {
@@ -294,7 +300,7 @@ func AddDaysToMem(db *sql.DB, userId int64, num int) {
 	}
 }
 
-func GetUsersAttandance(db *sql.DB, from time.Time, until time.Time) []t.UserAttendance {
+func GetUsersAttandance(db *sql.DB, from time.Time, until time.Time) ([]t.UserAttendance, error) {
 	var users []t.UserAttendance
 	query := `
       SELECT u.id, username, name, emoji, COUNT(user_id) AS mycount FROM yoga.attendance 
@@ -304,25 +310,28 @@ func GetUsersAttandance(db *sql.DB, from time.Time, until time.Time) []t.UserAtt
 	rows, err := db.Query(query, from, until)
 	defer rows.Close()
 
-	if err == nil {
-		for rows.Next() {
-			var u t.UserAttendance
-
-			err := rows.Scan(&u.U.ID, &u.U.Username, &u.U.Name, &u.U.Emoji, &u.Count)
-
-			if err != nil {
-				fmt.Println("✡️  line 305 err", err)
-			} else {
-				users = append(users, u)
-			}
-
-		}
-	} else {
-		fmt.Println("✡️  line 312 err", err)
-
+	if err != nil {
+		return users, err
 	}
 
-	return users
+	for rows.Next() {
+		var u t.UserAttendance
+		var username sql.NullString
+
+		err := rows.Scan(&u.U.ID, &username, &u.U.Name, &u.U.Emoji, &u.Count)
+
+		if username.Valid {
+			u.U.Username = username.String
+		}
+
+		if err != nil {
+			return users, err
+		} else {
+			users = append(users, u)
+		}
+	}
+
+	return users, nil
 }
 
 func UpdateLessonDate(db *sql.DB, lessonId int, date string) {

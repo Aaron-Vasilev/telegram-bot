@@ -112,8 +112,8 @@ func yogis(lesson t.LessonWithUsers) string {
 	for i, l := range lesson.Users {
 		name := l.Name
 
-		if l.Username.Valid {
-			name = "@" + l.Username.String
+		if l.Username != "" {
+			name = "@" + l.Username
 		}
 
 		students += fmt.Sprintf("\n%d. %s %s", i+1, name, l.Emoji)
@@ -273,8 +273,8 @@ func ValidateLessonStr(s string) ValidatedLesson {
 func UserMemText(u t.UserMembership) string {
 	userName := "null"
 
-	if u.User.Username.Valid {
-		userName = u.User.Username.String
+	if u.User.Username != "" {
+		userName = u.User.Username
 	}
 
 	if u.Ends == nil {
