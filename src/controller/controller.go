@@ -74,36 +74,21 @@ func GetLessonWithUsers(db *sql.DB, callBackData string) (t.LessonWithUsers, err
 	return lesson, nil
 }
 
-func ToggleUserInLesson(db *sql.DB, u t.Update) string {
-	text := ""
-	data := strings.Split(u.CallbackQuery.Data, "=")
-	action := data[0]
-	lessonId := data[1]
-
+func ToggleUserInLesson(db *sql.DB, userId int64, lessonId int, action string) {
 	switch action {
 	case "REGISTER":
 		query := `UPDATE yoga.registered_users
 			SET registered = array_append(registered, $1)
 			WHERE lesson_id=$2 AND NOT ($1=ANY(registered));`
 
-		db.Exec(query, u.CallbackQuery.From.ID, lessonId)
-
-		text = utils.SeeYouMsg
+		db.Exec(query, userId, lessonId)
 	case "UNREGISTER":
 		query := `UPDATE yoga.registered_users
 			SET registered = array_remove(registered, $1)
 			WHERE lesson_id=$2;`
 
-		db.Exec(query, u.CallbackQuery.From.ID, lessonId)
-
-		text = "You are free, fatass...🌚"
+		db.Exec(query, userId, lessonId)
 	}
-
-	return text
-}
-
-func CreateLesson() {
-	//TODO don't forget to add a row into registered_users
 }
 
 func SaveUser(db *sql.DB, id int64, username string, name string) {
@@ -395,4 +380,45 @@ func BlockUsers(db *sql.DB, ids []int64) error {
 	_, err := db.Exec(query, pq.Int64Array(ids))
 
 	return err
+}
+
+func GetLessonsByDate(db *sql.DB, date string) ([]t.Lesson, error) {
+	var lessons []t.Lesson
+	query := `SELECT * FROM yoga.lesson WHERE date=$1;`
+
+	rows, err := db.Query(query, date)
+
+	if err != nil {
+		return lessons, err
+	}
+
+	for rows.Next() {
+		var l t.Lesson
+
+		err := rows.Scan(&l.ID, &l.Date, &l.Time, &l.Description, &l.Max)
+
+		if err != nil {
+			return lessons, err
+		}
+
+		lessons = append(lessons, l)
+	}
+
+	return lessons, nil
+}
+
+func GetRegisteredUsers(db *sql.DB, lessonId int) (t.RegisteredUsers, error) {
+	var registered t.RegisteredUsers
+	var ids pq.Int64Array
+	query := `SELECT * FROM yoga.registered_users WHERE lesson_id=$1;`
+
+	err := db.QueryRow(query, lessonId).Scan(&registered.LessonId, &ids)
+
+	if err != nil {
+		return registered, err
+	}
+
+	registered.Registered = []int64(ids)
+
+	return registered, nil
 }

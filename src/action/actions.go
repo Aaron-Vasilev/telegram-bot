@@ -7,6 +7,8 @@ import (
 	t "bot/src/utils/types"
 	"database/sql"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -181,7 +183,30 @@ func SendLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
 }
 
 func RegisterForLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
-	text := controller.ToggleUserInLesson(db, u)
+	text := ""
+	data := strings.Split(u.CallbackQuery.Data, "=")
+	action := data[0]
+	lessonId, err := strconv.Atoi(data[1])
+
+	if err != nil {
+		bot.Error(fmt.Sprintf("Wrong lesson id for lesson: %s", data[1]))
+		bot.SendText(u.FromChat().ID, utils.WrongMsg)
+		return
+	}
+
+	switch action {
+	case utils.REGISTER:
+		text = utils.SeeYouMsg
+	case utils.UNREGISTER:
+		text = utils.YouAreFree
+	default:
+		bot.Error(fmt.Sprintf("Error this action doesn't exists: %s", action))
+		bot.SendText(u.FromChat().ID, utils.WrongMsg)
+		return
+	}
+
+	controller.ToggleUserInLesson(db, u.FromChat().ID, lessonId, action)
+
 	bot.SendText(u.FromChat().ID, text)
 }
 
@@ -229,4 +254,56 @@ func NotifyAboutSubscriptionEnds(bot *bot.Bot, db *sql.DB) {
 
 		bot.SendHTML(mem.User.ID, text)
 	}
+}
+
+func NotifyAboutTommorowLesson(bot *bot.Bot, db *sql.DB) {
+	tomorrow := time.Now().AddDate(0, 0, 1)
+	formatted := tomorrow.Format("2006-01-02")
+
+	lessons, err := controller.GetLessonsByDate(db, formatted)
+
+	if err != nil {
+		bot.Error("Error in tomorrow's lesson notification: " + err.Error())
+		return
+	}
+
+	for _, lesson := range lessons {
+		registeredUsers, err := controller.GetRegisteredUsers(db, lesson.ID)
+
+		if err != nil {
+			bot.Error(fmt.Sprintf("Error in lesson: %d\nerror: %s", lesson.ID, err.Error()))
+			break
+		}
+
+		for _, userId := range registeredUsers.Registered {
+			bot.SendMessage(utils.IfUserComesMsg(userId, lesson))
+		}
+	}
+}
+
+func IfUserComesHandler(bot *bot.Bot, db *sql.DB, u t.Update) {
+	text := ""
+	data := strings.Split(u.CallbackData(), "=")
+	response := data[2]
+	lessonId, err := strconv.Atoi(data[1])
+
+	if err != nil {
+		bot.Error(fmt.Sprintf("Wrong lesson id for lesson: %s", data[1]))
+		bot.SendText(u.FromChat().ID, utils.WrongMsg)
+		return
+	}
+
+	switch response {
+	case utils.YES:
+		text = "You are the best🏆"
+	case utils.NO:
+		text = utils.YouAreFree
+		controller.ToggleUserInLesson(db, u.FromChat().ID, lessonId, utils.UNREGISTER)
+	default:
+		bot.Error(fmt.Sprintf("Error the response is nor YES or NO: %s", response))
+		bot.SendText(u.FromChat().ID, utils.WrongMsg)
+		return
+	}
+
+	bot.SendText(u.FromChat().ID, text)
 }

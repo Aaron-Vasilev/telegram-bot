@@ -4,6 +4,7 @@ import (
 	t "bot/src/utils/types"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"regexp"
 	"strconv"
@@ -11,6 +12,11 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+)
+
+var (
+	strongEmojis = []string{"😮‍💨", "🥳", "😎", "😰", "😤", "💯", "💦", "🖐️", "👌", "✊", "👊", "🙌", "🤳", "🦾", "🦵", "👂", "👃", "🫀", "🫁", "🏃‍♂️", "🏃‍♀️", "🧗‍♂️", "🧗‍♀️", "🏋️‍♂️", "🏋️‍♀️", "🤼‍♂️", "🤼‍♀️", "🦍", "🐜", "🥗", "🔥", "✨", "🎉", "🎊", "🥊", "🎽", "✅", "🙏", "☯️", "🧘🏿‍♀️", "🧘🏿‍♂️"}
+	weakEmojis   = []string{"🤕", "🥀", "𓀗", "🥴", "🤒", "💀", "💔", "🥺", "👎🏻", "😔", "🫠", "🗿", "💩", "🐌", "🩸", "🍆🍑😩👉👌💦", "👶🏿", "🌡️", "💔😢😭", "🤮", "👴🏻", "🦠", "🥶", "🚽", "🙅🏿‍♀️", "🪨"}
 )
 
 func LoadEnv() {
@@ -82,12 +88,12 @@ func GenerateLessonMessage(lesson t.LessonWithUsers, userId int64) t.Message {
 	if isUserInLesson {
 		button = append(button, t.InlineKeyboardButton{
 			Text:         "Unregister from the lesson",
-			CallbackData: fmt.Sprintf("UNREGISTER=%d", lesson.LessonId),
+			CallbackData: fmt.Sprintf("%s=%d", UNREGISTER, lesson.LessonId),
 		})
 	} else {
 		button = append(button, t.InlineKeyboardButton{
 			Text:         "Register for the lesson",
-			CallbackData: fmt.Sprintf("REGISTER=%d", lesson.LessonId),
+			CallbackData: fmt.Sprintf("%s=%d", REGISTER, lesson.LessonId),
 		})
 	}
 	buttons = append(buttons, button)
@@ -361,4 +367,29 @@ func NumRegexp() *regexp.Regexp {
 
 func FullName(firstName, lastName string) string {
 	return strings.Trim(fmt.Sprintf("%s %s", firstName, lastName), " ")
+}
+
+func IfUserComesMsg(userId int64, lesson t.Lesson) t.Message {
+	num1 := rand.Intn(len(strongEmojis))
+	num2 := rand.Intn(len(weakEmojis))
+
+	return t.Message{
+		ChatId:    userId,
+		Text:      fmt.Sprintf("Hey puncake🥞, are you comming tommorow at <b>%s</b>?", lesson.Time.Format("15:04")),
+		ParseMode: "html",
+		ReplyMarkup: t.InlineKeyboardMarkup{
+			InlineKeyboard: [][]t.InlineKeyboardButton{
+				{
+					{
+						Text:         fmt.Sprintf("Yes %s", strongEmojis[num1]),
+						CallbackData: fmt.Sprintf("IF_USER_COMES=%d=%s", lesson.ID, YES),
+					},
+					{
+						Text:         fmt.Sprintf("No %s", weakEmojis[num2]),
+						CallbackData: fmt.Sprintf("IF_USER_COMES=%d=%s", lesson.ID, NO),
+					},
+				},
+			},
+		},
+	}
 }

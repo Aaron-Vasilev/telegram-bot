@@ -12,10 +12,10 @@ var (
 )
 
 type UserDB struct {
-	ID       int64
-	Name     string
-	Username string
-	Emoji    string
+	ID        int64
+	Name      string
+	Username  string
+	Emoji     string
 	IsBlocked bool
 }
 type Lesson struct {
@@ -67,4 +67,9 @@ type RegisterdOnLesson struct {
 type UserAttendance struct {
 	U     UserDB
 	Count int
+}
+
+type RegisteredUsers struct {
+	LessonId   int
+	Registered []int64
 }

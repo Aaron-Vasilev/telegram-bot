@@ -15,6 +15,7 @@ import (
 func handleCallbackQuery(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	data := u.CallbackData()
 	lessonRe := regexp.MustCompile(`^(REGISTER|UNREGISTER)=\d+$`)
+	ifUserComesRe := regexp.MustCompile(`^(IF_USER_COMES)=\d+=(YES|NO)$`)
 
 	if data == utils.ChangeEmoji {
 		scene.Start(ctx, bot, db, u, utils.ChangeEmoji)
@@ -26,6 +27,8 @@ func handleCallbackQuery(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		action.SendLesson(bot, db, u)
 	} else if lessonRe.MatchString(data) {
 		action.RegisterForLesson(bot, db, u)
+	} else if ifUserComesRe.MatchString(data) {
+		action.IfUserComesHandler(bot, db, u)
 	}
 }
 
