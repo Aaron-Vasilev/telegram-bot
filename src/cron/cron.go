@@ -31,7 +31,7 @@ func Cron(bot *bot.Bot, db *sql.DB) {
 		action.NotifyAboutSubscriptionEnds(bot, db)
 	})
 
-	c.AddFunc("* 23 * * *", func() {
+	c.AddFunc("0 21 * * *", func() {
 		action.NotifyAboutTommorowLesson(bot, db)
 	})
 
