@@ -135,32 +135,6 @@ func BeautyDate(date time.Time) string {
 	return date.Format("02/01")
 }
 
-func GenerateKeyboard() *t.ReplyKeyboardMarkup {
-	replyKeyboard := t.ReplyKeyboardMarkup{
-		Keyboard: [][]t.KeyboardButton{
-			{
-				{
-					Text: Keyboard["Timetable 🗓"],
-				},
-				{
-					Text: Keyboard["Leaderboard 🏆"],
-				},
-			},
-			{
-				{
-					Text: Keyboard["Profile 🧘"],
-				},
-				{
-					Text: Keyboard["Contact 💌"],
-				},
-			},
-		},
-		ResizeKeyboard: true,
-	}
-
-	return &replyKeyboard
-}
-
 func IsAdmin(id int64) bool {
 	adminsStr := os.Getenv("ADMIN")
 

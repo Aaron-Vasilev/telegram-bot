@@ -422,3 +422,17 @@ func GetRegisteredUsers(db *sql.DB, lessonId int) (t.RegisteredUsers, error) {
 
 	return registered, nil
 }
+
+func CheckIfUserHasCourseAccess(db *sql.DB, userId int64) (bool, error) {
+	query := `SELECT user_id FROM yoga.subscription WHERE user_id=$1 AND ends >= NOW();`
+
+	err := db.QueryRow(query, userId).Scan(&userId)
+
+	if err == sql.ErrNoRows {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}

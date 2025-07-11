@@ -80,6 +80,18 @@ func (bot *Bot) SendPhotoById(chatId int64, fileId string) {
 	Send(bot, "/sendPhoto", msg)
 }
 
+func (bot *Bot) SendVideoById(chatId int64, fileId string) {
+	msg := t.Message{
+		ChatId: chatId,
+		Video:  &t.CustomVideo{
+			FileId: fileId,
+			IsString: true,
+		},
+	}
+
+	Send(bot, "/sendVideo", msg)
+}
+
 func (bot *Bot) SendLocation(chatId int64, lat float32, long float32) {
 	msg := t.Message{
 		ChatId:    chatId,
@@ -179,7 +191,7 @@ func Call[T any](bot *Bot, method string) T {
 		s, _ := json.MarshalIndent(resData.Result, "", "\t")
 		str := string(s)
 
-		if str != "[]" {
+		if str != "[]" && str != "null" {
 			fmt.Println("Messages RECEIVED: ", str)
 		}
 	}

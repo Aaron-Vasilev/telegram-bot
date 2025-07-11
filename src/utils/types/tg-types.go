@@ -491,7 +491,7 @@ type Message struct {
 	// Video message is a video, information about the video;
 	//
 	// optional
-	Video *Video `json:"video,omitempty"`
+	Video *CustomVideo `json:"video,omitempty"`
 	// VideoNote message is a video note, information about the video message;
 	//
 	// optional
@@ -941,6 +941,12 @@ type Document struct {
 	FileSize int `json:"file_size,omitempty"`
 }
 
+type CustomVideo struct {
+	IsString bool
+	FileId string
+	Object *Video
+}
+
 // Video represents a video file.
 type Video struct {
 	// FileID identifier for this file, which can be used to download or reuse
@@ -972,6 +978,34 @@ type Video struct {
 	//
 	// optional
 	FileSize int `json:"file_size,omitempty"`
+}
+
+func (v *CustomVideo) MarshalJSON() ([]byte, error) {
+	if v.IsString {
+		return json.Marshal(v.FileId)
+	}
+
+	return json.Marshal(v.Object)
+}
+
+func (v *CustomVideo) UnmarshalJSON(data []byte) error {
+	// Try as string
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		v.IsString = true
+		v.FileId = s
+		return nil
+	}
+
+	// Try as object
+	var video Video
+	if err := json.Unmarshal(data, &video); err == nil {
+		v.IsString = false
+		v.Object = &video
+		return nil
+	} else {
+		return err
+	}
 }
 
 // VideoNote object represents a video message.

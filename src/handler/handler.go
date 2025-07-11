@@ -9,6 +9,7 @@ import (
 	t "bot/src/utils/types"
 	"database/sql"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -85,6 +86,10 @@ func handleKeyboard(bot *bot.Bot, db *sql.DB, u t.Update) {
 		action.SendProfile(bot, db, u.FromChat().ID)
 	case utils.Contact:
 		action.SendContact(bot, u)
+	case utils.Prices:
+		action.SendPrices(bot, u)
+	case utils.Course:
+		action.CourseAction(bot, db, u)
 	}
 }
 
@@ -103,7 +108,7 @@ func HandleUpdate(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		handleScene(ctx, bot, db, u)
 	} else if updateWithCallbackQuery {
 		handleCallbackQuery(ctx, bot, db, u)
-	} else if _, exists := utils.Keyboard[u.Message.Text]; exists {
+	} else if slices.Contains(utils.Keyboard, u.Message.Text) {
 		handleKeyboard(bot, db, u)
 	} else if strings.HasPrefix(u.Message.Text, "/") {
 		handleMenu(bot, db, u)

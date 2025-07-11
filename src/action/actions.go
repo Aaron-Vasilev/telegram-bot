@@ -7,6 +7,7 @@ import (
 	t "bot/src/utils/types"
 	"database/sql"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -41,6 +42,14 @@ func SendContact(bot *bot.Bot, u t.Update) {
 	bot.SendMessage(t.Message{
 		ChatId: u.FromChat().ID,
 		Photo:  "https://bot-telega.s3.il-central-1.amazonaws.com/door.jpg",
+	})
+}
+
+func SendPrices(bot *bot.Bot, u t.Update) {
+	bot.SendMessage(t.Message{
+		ChatId:    u.FromChat().ID,
+		Text:      utils.PricesMsg,
+		ParseMode: "html",
 	})
 }
 
@@ -128,25 +137,22 @@ func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 }
 
 func SendKeyboard(bot *bot.Bot, chatId int64, text string) {
+	var keyboard [][]t.KeyboardButton
+	var pair []t.KeyboardButton
+
+	for i := range utils.Keyboard {
+		if len(pair) == 2 {
+			keyboard = append(keyboard, slices.Clone(pair))
+			pair = pair[:0]
+		}
+
+		pair = append(pair, t.KeyboardButton{
+			Text: utils.Keyboard[i],
+		})
+	}
+	keyboard = append(keyboard, pair)
 	replyKeyboard := t.ReplyKeyboardMarkup{
-		Keyboard: [][]t.KeyboardButton{
-			{
-				{
-					Text: utils.Keyboard[utils.Timetable],
-				},
-				{
-					Text: utils.Keyboard[utils.Leaderboard],
-				},
-			},
-			{
-				{
-					Text: utils.Keyboard[utils.Profile],
-				},
-				{
-					Text: utils.Keyboard[utils.Contact],
-				},
-			},
-		},
+		Keyboard: keyboard,
 		ResizeKeyboard: true,
 	}
 
@@ -306,4 +312,41 @@ func IfUserComesHandler(bot *bot.Bot, db *sql.DB, u t.Update) {
 	}
 
 	bot.SendText(u.FromChat().ID, text)
+}
+
+func CourseAction(bot *bot.Bot, db *sql.DB, u t.Update) {
+	bot.SendText(u.FromChat().ID, "Comming 🔜")
+	return
+	hasAccess, err := controller.CheckIfUserHasCourseAccess(db, u.FromChat().ID)
+
+	if err != nil {
+		bot.Error("CourseAction:"+err.Error())
+		bot.SendText(u.FromChat().ID, utils.WrongMsg)
+		return
+	}
+
+	if !hasAccess {
+
+		replyKeyboard := t.ReplyKeyboardMarkup{
+			Keyboard: [][]t.KeyboardButton{
+				{
+					{
+						Text: "TEST",
+					},
+				},
+			},
+			ResizeKeyboard: true,
+		}
+
+		msg := t.Message{
+			Text:        "SUP",
+			ChatId:      u.FromChat().ID,
+			ReplyMarkup: &replyKeyboard,
+		}
+
+		bot.SendMessage(msg)
+
+	} else {
+
+	}
 }
