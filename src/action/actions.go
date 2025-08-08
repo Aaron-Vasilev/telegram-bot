@@ -3,21 +3,28 @@ package action
 import (
 	"bot/src/bot"
 	"bot/src/controller"
+	"bot/src/db"
 	"bot/src/utils"
 	t "bot/src/utils/types"
-	"database/sql"
 	"fmt"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func SendTimetable(bot *bot.Bot, db *sql.DB, upd t.Update) {
-	lessons := controller.GetAvaliableLessons(db)
+func SendTimetable(bot *bot.Bot, u t.Update) {
+	lessons, err := db.Query.GetAvailableLessons(bot.Ctx)
 
+	if err != nil {
+		bot.SendText(u.FromChat().ID, utils.WrongMsg)
+		bot.Error("Send timetable err: " + err.Error())
+		return
+	}
 	msg := utils.GenerateTimetableMsg(lessons, false)
-	msg.ChatId = upd.FromChat().ID
+	msg.ChatId = u.FromChat().ID
 
 	bot.SendMessage(msg)
 }
@@ -53,8 +60,15 @@ func SendPrices(bot *bot.Bot, u t.Update) {
 	})
 }
 
-func SendProfile(bot *bot.Bot, db *sql.DB, chatId int64) {
-	userWithMem := controller.GetUserWithMembership(db, chatId)
+func SendProfile(bot *bot.Bot, chatId int64) {
+	userWithMem, err := db.Query.GetUserWithMembership(bot.Ctx, chatId)
+
+	if err != nil {
+		bot.Error("Get user with memb error: " + err.Error())
+		bot.SendText(chatId, utils.WrongMsg)
+
+		return
+	}
 
 	buttons := [][]t.InlineKeyboardButton{
 		{
@@ -77,7 +91,7 @@ func SendProfile(bot *bot.Bot, db *sql.DB, chatId int64) {
 	bot.SendMessage(msg)
 }
 
-func SendLeaderboard(bot *bot.Bot, db *sql.DB, chatId int64) {
+func SendLeaderboard(bot *bot.Bot, chatId int64) {
 	now := time.Now()
 
 	firstDay := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
@@ -91,7 +105,10 @@ func SendLeaderboard(bot *bot.Bot, db *sql.DB, chatId int64) {
 	firstDayNextMonth := time.Date(nextMonthYear, nextMonth, 1, 0, 0, 0, 0, now.Location())
 	lastDay := firstDayNextMonth.AddDate(0, 0, -1)
 
-	usersWithCount, err := controller.GetUsersAttandance(db, firstDay, lastDay)
+	usersWithCount, err := db.Query.GetUsersAttandance(bot.Ctx, db.GetUsersAttandanceParams{
+		FromDate: firstDay,
+		ToDate:   lastDay,
+	})
 
 	if err != nil {
 		bot.Error("send leaderboard error: " + err.Error())
@@ -115,7 +132,6 @@ func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 			keyboard = append(keyboard, btns)
 			btns = make([]t.KeyboardButton, 2)
 		}
-
 	}
 
 	if btns[1].Text == "" {
@@ -152,7 +168,7 @@ func SendKeyboard(bot *bot.Bot, chatId int64, text string) {
 	}
 	keyboard = append(keyboard, pair)
 	replyKeyboard := t.ReplyKeyboardMarkup{
-		Keyboard: keyboard,
+		Keyboard:       keyboard,
 		ResizeKeyboard: true,
 	}
 
@@ -165,20 +181,37 @@ func SendKeyboard(bot *bot.Bot, chatId int64, text string) {
 	bot.SendMessage(msg)
 }
 
-func SendLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
-	lessonWithUsers, err := controller.GetLessonWithUsers(db, u.CallbackQuery.Data)
+func SendLesson(bot *bot.Bot, u t.Update) {
+	lessonId, err := strconv.Atoi(strings.Split(u.CallbackQuery.Data, "=")[1])
+
+	if err != nil {
+		bot.Error("send lesson err: " + err.Error())
+	}
+
+	lessonWithUsers, err := db.Query.GetLessonWithUsers(bot.Ctx, lessonId)
 	chat := u.FromChat()
 
 	if err != nil {
 		bot.Error(fmt.Sprintf("Send lesson error: %s. Data: %s", err.Error(), u.CallbackQuery.Data))
+		bot.SendText(chat.ID, utils.WrongMsg)
+		return
 	}
 
-	for _, user := range lessonWithUsers.Users {
-		if user.ID == chat.ID {
+	for _, l := range lessonWithUsers {
+		if l.UserID.Valid && l.UserID.Int64 == chat.ID {
 			fullName := utils.FullName(chat.FirstName, chat.LastName)
 
-			if (user.Username != "" && user.Username != chat.UserName) || fullName != user.Name {
-				controller.UpdateUserBio(db, chat.ID, chat.UserName, fullName)
+			if (
+				(l.Username.Valid && l.Username.String != chat.UserName) || 
+				(l.Name.Valid && fullName != l.Name.String)) {
+				db.Query.UpdateUserBio(bot.Ctx, db.UpdateUserBioParams{
+					ID:   chat.ID,
+					Name: fullName,
+					Username: pgtype.Text{
+						String: chat.UserName,
+						Valid:  true,
+					},
+				})
 			}
 		}
 	}
@@ -188,7 +221,7 @@ func SendLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
 	bot.SendMessage(msg)
 }
 
-func RegisterForLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
+func RegisterForLesson(bot *bot.Bot, u t.Update) {
 	text := ""
 	data := strings.Split(u.CallbackQuery.Data, "=")
 	action := data[0]
@@ -211,12 +244,12 @@ func RegisterForLesson(bot *bot.Bot, db *sql.DB, u t.Update) {
 		return
 	}
 
-	controller.ToggleUserInLesson(db, u.FromChat().ID, lessonId, action)
+	controller.ToggleUserInLesson(bot.Ctx, u.FromChat().ID, lessonId, action)
 
 	bot.SendText(u.FromChat().ID, text)
 }
 
-func SendHowToFind(bot *bot.Bot, db *sql.DB, u t.Update) {
+func SendHowToFind(bot *bot.Bot, u t.Update) {
 	bot.SendLocation(u.FromChat().ID, 32.049336, 34.752160)
 
 	media := []t.InputMediaPhoto{
@@ -238,115 +271,133 @@ func SendHowToFind(bot *bot.Bot, db *sql.DB, u t.Update) {
 	bot.SendMediaGroup(u.FromChat().ID, media)
 }
 
-func NotifyAboutSubscriptionEnds(bot *bot.Bot, db *sql.DB) {
+func NotifyAboutSubscriptionEnds(bot *bot.Bot) {
 	today := time.Now()
-	usersMem := controller.GetAllUsersWithMemLatest(db)
+	usersMem, err := db.Query.GetAllUsersWithMemLatest(bot.Ctx)
+
+	if err != nil {
+		bot.Error("Get all users with mem latest error:" + err.Error())
+		return
+	}
 
 	for _, mem := range usersMem {
 		text := "My cherry varenichek🥟🍒\n"
 
-		if *mem.Type == utils.NoLimit {
+		if mem.Type == utils.NoLimit {
 			text += fmt.Sprintf("Kindly reminder, your membership ends <b>%s</b>", mem.Ends.Format("2006-01-02"))
-		} else if *mem.LessonsAvailable <= 0 || mem.Ends.Before(today) {
+		} else if mem.LessonsAvaliable <= 0 || mem.Ends.Before(today) {
 			text += fmt.Sprintf("When you come to my lesson next time, <b>remember to renew your membership</b>😚")
 		} else {
 			text += fmt.Sprintf(
 				"Your membership ends <b>%s</b> and you still have <b>%d</b> lessons🥳\nDon't forget to use them all🧞‍♀️",
 				mem.Ends.Format("2006-01-02"),
-				*mem.LessonsAvailable,
+				mem.LessonsAvaliable,
 			)
 		}
 		text += "\n" + utils.SeeYouMsg
 
-		bot.SendHTML(mem.User.ID, text)
+		bot.SendHTML(mem.ID, text)
 	}
 }
 
-func NotifyAboutTommorowLesson(bot *bot.Bot, db *sql.DB) {
+func NotifyAboutTommorowLesson(bot *bot.Bot) {
 	tomorrow := time.Now().AddDate(0, 0, 1)
-	formatted := tomorrow.Format("2006-01-02")
 
-	lessons, err := controller.GetLessonsByDate(db, formatted)
+	lessons, err := db.Query.GetLessonsByDate(bot.Ctx, tomorrow)
 
 	if err != nil {
 		bot.Error("Error in tomorrow's lesson notification: " + err.Error())
 		return
 	}
 
+	ViolettaId, err := utils.ViolettaId()
+
+	if err != nil {
+		bot.Error("No Violetta's id in .env" + err.Error())
+		return
+	}
+
 	for _, lesson := range lessons {
-		registeredUsers, err := controller.GetRegisteredUsers(db, lesson.ID)
+		res, _ := bot.SendPool(t.PollMessage{
+			ChatId: ViolettaId,
+			Poll:   utils.IfUserComesPoll(lesson),
+		})
+
+		registeredForLessons, err := db.Query.GetRegisteredUsers(bot.Ctx, lesson.ID)
 
 		if err != nil {
 			bot.Error(fmt.Sprintf("Error in lesson: %d\nerror: %s", lesson.ID, err.Error()))
 			break
 		}
 
-		for _, userId := range registeredUsers.Registered {
-			bot.SendMessage(utils.IfUserComesMsg(userId, lesson))
+		for _, lessons := range registeredForLessons {
+			for _, id := range lessons.Registered {
+				bot.Forward(id, res.Chat.ID, res.MessageID)
+			}
 		}
 	}
 }
 
-func IfUserComesHandler(bot *bot.Bot, db *sql.DB, u t.Update) {
-	text := ""
-	data := strings.Split(u.CallbackData(), "=")
-	response := data[2]
-	lessonId, err := strconv.Atoi(data[1])
+// TODO
+func IfUserComesHandler(bot *bot.Bot, u *t.PollAnswer) {
 
-	if err != nil {
-		bot.Error(fmt.Sprintf("Wrong lesson id for lesson: %s", data[1]))
-		bot.SendText(u.FromChat().ID, utils.WrongMsg)
-		return
-	}
+	// 	text := ""
+	// 	lessonId, err := strconv.Atoi(data[1])
 
-	switch response {
-	case utils.YES:
-		text = "You are the best🏆"
-	case utils.NO:
-		text = utils.YouAreFree
-		controller.ToggleUserInLesson(db, u.FromChat().ID, lessonId, utils.UNREGISTER)
-	default:
-		bot.Error(fmt.Sprintf("Error the response is nor YES or NO: %s", response))
-		bot.SendText(u.FromChat().ID, utils.WrongMsg)
-		return
-	}
+	// 	if err != nil {
+	// 		bot.Error(fmt.Sprintf("Wrong lesson id for lesson: %s", data[1]))
+	// 		bot.SendText(u.User.ID, utils.WrongMsg)
+	// 		return
+	// 	}
 
-	bot.SendText(u.FromChat().ID, text)
+	// 	switch response {
+	// 	case utils.YES:
+	// 		text = "You are the best🏆"
+	// 	case utils.NO:
+	// 		text = utils.YouAreFree
+	// 		controller.ToggleUserInLesson(bot.Ctx, u.User.ID, lessonId, utils.UNREGISTER)
+	// 	default:
+	// 		bot.Error(fmt.Sprintf("Error the response is nor YES or NO: %s", response))
+	// 		bot.SendText(u.User.ID, utils.WrongMsg)
+	// 		return
+	// 	}
+
+	// bot.SendText(u.User.ID, text)
 }
 
-func CourseAction(bot *bot.Bot, db *sql.DB, u t.Update) {
+func CourseAction(bot *bot.Bot, u t.Update) {
 	bot.SendText(u.FromChat().ID, "Comming 🔜")
 	return
-	hasAccess, err := controller.CheckIfUserHasCourseAccess(db, u.FromChat().ID)
+	// 	hasAccess, err := db.Query.CheckIfUserHasCourseAcces(bot.Ctx, u.FromChat().ID)
 
-	if err != nil {
-		bot.Error("CourseAction:"+err.Error())
-		bot.SendText(u.FromChat().ID, utils.WrongMsg)
-		return
-	}
+	// 	if err != nil {
+	// 		bot.Error("CourseAction:"+err.Error())
+	// 		bot.SendText(u.FromChat().ID, utils.WrongMsg)
+	// 		return
+	// 	}
 
-	if !hasAccess {
+	// 	if !hasAccess {
 
-		replyKeyboard := t.ReplyKeyboardMarkup{
-			Keyboard: [][]t.KeyboardButton{
-				{
-					{
-						Text: "TEST",
-					},
-				},
-			},
-			ResizeKeyboard: true,
-		}
+	// 		replyKeyboard := t.ReplyKeyboardMarkup{
+	// 			Keyboard: [][]t.KeyboardButton{
+	// 				{
+	// 					{
+	// 						Text: "TEST",
+	// 					},
+	// 				},
+	// 			},
+	// 			ResizeKeyboard: true,
+	// 		}
 
-		msg := t.Message{
-			Text:        "SUP",
-			ChatId:      u.FromChat().ID,
-			ReplyMarkup: &replyKeyboard,
-		}
+	// 		msg := t.Message{
+	// 			Text:        "SUP",
+	// 			ChatId:      u.FromChat().ID,
+	// 			ReplyMarkup: &replyKeyboard,
+	// 		}
 
-		bot.SendMessage(msg)
+	// 		bot.SendMessage(msg)
 
-	} else {
+	// 	} else {
 
-	}
+	// }
 }

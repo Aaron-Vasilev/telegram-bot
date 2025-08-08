@@ -1,16 +1,11 @@
 package scene
 
 import (
+	"bot/src/bot"
 	"context"
 )
 
-type SceneState struct {
-	Scene string
-	Stage int
-	Data  interface{}
-}
-
-type sceneMap map[int64]SceneState
+type sceneMap map[int64]bot.SceneState
 
 type Ctx struct {
 	Ctx context.Context
@@ -19,7 +14,7 @@ type Ctx struct {
 var sceneKey = "SceneKey"
 
 func (ctx *Ctx) Start(userId int64, scene string) {
-	ctx.SetValue(userId, SceneState{
+	ctx.SetCtxValue(userId, bot.SceneState{
 		Scene: scene,
 		Stage: 1,
 	})
@@ -44,14 +39,14 @@ func (s *Ctx) Next(userId int64) {
 
 }
 
-func (s Ctx) GetValue(userId int64) (SceneState, bool) {
+func (s Ctx) GetCtxValue(userId int64) (bot.SceneState, bool) {
 	sMap, _ := s.Ctx.Value(sceneKey).(sceneMap)
 	value, exist := sMap[userId]
 
 	return value, exist
 }
 
-func (s *Ctx) SetValue(userId int64, state SceneState) {
+func (s *Ctx) SetCtxValue(userId int64, state bot.SceneState) {
 	sMap, ok := s.Ctx.Value(sceneKey).(sceneMap)
 
 	if ok {
@@ -61,13 +56,4 @@ func (s *Ctx) SetValue(userId int64, state SceneState) {
 	}
 
 	s.Ctx = context.WithValue(s.Ctx, sceneKey, sMap)
-}
-
-func NewSceneContext() Ctx {
-	ctx := context.Background()
-	defer ctx.Done()
-
-	return Ctx{
-		Ctx: ctx,
-	}
 }

@@ -13,3 +13,5 @@ restart:
 	@echo Started
 stop:
 	@supervisorctl shutdown
+sql:
+	@sqlc generate

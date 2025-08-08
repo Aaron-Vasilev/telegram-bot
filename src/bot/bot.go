@@ -3,6 +3,7 @@ package bot
 import (
 	t "bot/src/utils/types"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ type Bot struct {
 	IsDebug  bool
 	LogLevel int
 	Offset   int
+	Ctx      context.Context
 }
 
 func (bot *Bot) GetMe() t.TBot {
@@ -52,7 +54,7 @@ func (bot *Bot) SendHTML(chatId int64, text string) {
 	Send(bot, "/sendMessage", msg)
 }
 
-func (bot *Bot) Forward(chatId, fromChatId int64, msgId int) (*http.Response, error) {
+func (bot *Bot) Forward(chatId, fromChatId int64, msgId int) ([]byte, error) {
 	msg := t.Message{
 		ChatId:     chatId,
 		MessageID:  msgId,
@@ -83,8 +85,8 @@ func (bot *Bot) SendPhotoById(chatId int64, fileId string) {
 func (bot *Bot) SendVideoById(chatId int64, fileId string) {
 	msg := t.Message{
 		ChatId: chatId,
-		Video:  &t.CustomVideo{
-			FileId: fileId,
+		Video: &t.CustomVideo{
+			FileId:   fileId,
 			IsString: true,
 		},
 	}
@@ -104,7 +106,7 @@ func (bot *Bot) SendLocation(chatId int64, lat float32, long float32) {
 
 func (bot *Bot) Error(text string) {
 	if bot.IsDebug {
-		fmt.Fprintf(os.Stdout, "\033[0;31m Error \033[0m %s", text)
+		fmt.Fprintf(os.Stdout, "\033[0;31m Error \033[0m %bot", text)
 	} else {
 		userId, err := strconv.ParseInt(os.Getenv("ERROR_CHAT_ID"), 10, 64)
 
@@ -116,9 +118,8 @@ func (bot *Bot) Error(text string) {
 	}
 }
 
-func Send(bot *Bot, method string, msg t.Message) (*http.Response, error) {
-	var resData t.Response[t.Message]
-	jsonData, err := json.Marshal(msg)
+func Send[T any](bot *Bot, method string, obj T) ([]byte, error) {
+	jsonData, err := json.Marshal(obj)
 
 	if err != nil {
 		fmt.Println("Error while json.Marshal:", err)
@@ -148,20 +149,23 @@ func Send(bot *Bot, method string, msg t.Message) (*http.Response, error) {
 	}
 
 	if bot.IsDebug {
+		var resData t.Response[t.Message]
 		err = json.Unmarshal(body, &resData)
 		if err != nil {
 			fmt.Println("Error json.Unmarshal:", err)
 		} else if !resData.Ok {
 			if resData.ErrorCode != 400 && resData.Description != "Bad Request: chat not found" {
-				bot.Error(fmt.Sprintf("Response is not OK, code: %d, %s", resData.ErrorCode, resData.Description))
+				bot.Error(fmt.Sprintf("Response is not OK, code: %d, %bot", resData.ErrorCode, resData.Description))
+			} else {
+				fmt.Println("Response is not OK: ", resData.Description)
 			}
 		} else {
-			s, _ := json.MarshalIndent(resData.Result, "", "\t")
-			fmt.Println("Messages SEND: ", string(s))
+			bot, _ := json.MarshalIndent(resData.Result, "", "\t")
+			fmt.Println("Messages SEND: ", string(bot))
 		}
 	}
 
-	return res, nil
+	return body, nil
 }
 
 func Call[T any](bot *Bot, method string) T {
@@ -188,8 +192,8 @@ func Call[T any](bot *Bot, method string) T {
 	}
 
 	if bot.IsDebug {
-		s, _ := json.MarshalIndent(resData.Result, "", "\t")
-		str := string(s)
+		bot, _ := json.MarshalIndent(resData.Result, "", "\t")
+		str := string(bot)
 
 		if str != "[]" && str != "null" {
 			fmt.Println("Messages RECEIVED: ", str)
@@ -199,15 +203,6 @@ func Call[T any](bot *Bot, method string) T {
 	return resData.Result
 }
 
-func (bot *Bot) SendAction(chatId int64, action string) (*http.Response, error) {
-	msg := t.Message{
-		ChatId: chatId,
-		Action: action,
-	}
-
-	return Send(bot, "/sendLocation", msg)
-}
-
 func isBotBlocked(body []byte) bool {
 	if strings.Contains(string(body), "Bad Request: chat not found") {
 		return true
@@ -215,11 +210,86 @@ func isBotBlocked(body []byte) bool {
 	return false
 }
 
-func (bot *Bot) SendMediaGroup(chatId int64, media []t.InputMediaPhoto) (*http.Response, error) {
+func (bot *Bot) SendMediaGroup(chatId int64, media []t.InputMediaPhoto) ([]byte, error) {
 	msg := t.Message{
 		ChatId: chatId,
 		Media:  media,
 	}
 
 	return Send(bot, "/SendMediaGroup", msg)
+}
+
+func (bot *Bot) SendPool(poll t.PollMessage) (t.Message, error) {
+	var res t.Response[t.Message]
+	body, err := Send(bot, "/sendPoll", poll)
+
+	if err != nil {
+		return res.Result, err
+	}
+
+	err = json.Unmarshal(body, &res)
+
+	if err != nil {
+		bot.Error("Send media group error: " + err.Error())
+	}
+
+	return res.Result, nil
+}
+
+type SceneState struct {
+	Scene string
+	Stage int
+	Data  interface{}
+}
+
+type sceneMap map[int64]SceneState
+
+type Ctx struct {
+	Ctx context.Context
+}
+
+var sceneKey = "SceneKey"
+
+func (bot *Bot) StartCtx(userId int64, scene string) {
+	bot.SetCtxValue(userId, SceneState{
+		Scene: scene,
+		Stage: 1,
+	})
+}
+
+func (bot *Bot) EndCtx(userId int64) {
+	sMap := bot.Ctx.Value(sceneKey).(sceneMap)
+
+	delete(sMap, userId)
+
+	bot.Ctx = context.WithValue(bot.Ctx, sceneKey, sMap)
+}
+
+func (bot *Bot) NextCtx(userId int64) {
+	sMap := bot.Ctx.Value(sceneKey).(sceneMap)
+	state := sMap[userId]
+
+	state.Stage++
+	sMap[userId] = state
+
+	bot.Ctx = context.WithValue(bot.Ctx, sceneKey, sMap)
+}
+
+func (bot *Bot) GetCtxValue(userId int64) (SceneState, bool) {
+	sMap, _ := bot.Ctx.Value(sceneKey).(sceneMap)
+	value, exist := sMap[userId]
+
+	return value, exist
+}
+
+func (bot *Bot) SetCtxValue(userId int64, state SceneState) {
+	sMap, ok := bot.Ctx.Value(sceneKey).(sceneMap)
+
+	if ok {
+		sMap[userId] = state
+	} else {
+		sMap = sceneMap{userId: state}
+	}
+
+	bot.Ctx = context.WithValue(bot.Ctx, sceneKey, sMap)
 }

@@ -3,7 +3,6 @@ package cron
 import (
 	"bot/src/action"
 	"bot/src/bot"
-	"database/sql"
 	"log"
 	"time"
 
@@ -18,7 +17,7 @@ import (
 // | |________ Hour (0 - 23)
 // |__________ Minute (0 - 59)
 
-func Cron(bot *bot.Bot, db *sql.DB) {
+func Cron(bot *bot.Bot) {
 	location, err := time.LoadLocation("Asia/Jerusalem")
 
 	if err != nil {
@@ -28,11 +27,12 @@ func Cron(bot *bot.Bot, db *sql.DB) {
 	c := cron.New(cron.WithLocation(location))
 
 	c.AddFunc("0 10 * * 0", func() {
-		action.NotifyAboutSubscriptionEnds(bot, db)
+		action.NotifyAboutSubscriptionEnds(bot)
 	})
 
-	c.AddFunc("0 21 * * *", func() {
-		action.NotifyAboutTommorowLesson(bot, db)
+	// 	c.AddFunc("0 21 * * *", func() {
+	c.AddFunc("* * * * *", func() {
+		action.NotifyAboutTommorowLesson(bot)
 	})
 
 	go c.Start()

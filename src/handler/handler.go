@@ -3,43 +3,41 @@ package handler
 import (
 	"bot/src/action"
 	"bot/src/bot"
-	"bot/src/controller"
+	"bot/src/db"
 	"bot/src/scene"
 	"bot/src/utils"
 	t "bot/src/utils/types"
-	"database/sql"
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func handleCallbackQuery(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+func handleCallbackQuery(bot *bot.Bot, u t.Update) {
 	data := u.CallbackData()
 	lessonRe := regexp.MustCompile(`^(REGISTER|UNREGISTER)=\d+$`)
-	ifUserComesRe := regexp.MustCompile(`^(IF_USER_COMES)=\d+=(YES|NO)$`)
 
 	if data == utils.ChangeEmoji {
-		scene.Start(ctx, bot, db, u, utils.ChangeEmoji)
+		scene.Start(bot, u, utils.ChangeEmoji)
 	} else if data == utils.HowToFind {
-		action.SendHowToFind(bot, db, u)
+		action.SendHowToFind(bot, u)
 	} else if data == utils.Timetable {
-		action.SendTimetable(bot, db, u)
+		action.SendTimetable(bot, u)
 	} else if utils.LessonRegexp().MatchString(data) {
-		action.SendLesson(bot, db, u)
+		action.SendLesson(bot, u)
 	} else if lessonRe.MatchString(data) {
-		action.RegisterForLesson(bot, db, u)
-	} else if ifUserComesRe.MatchString(data) {
-		action.IfUserComesHandler(bot, db, u)
+		action.RegisterForLesson(bot, u)
 	}
 }
 
-func handleScene(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
-	state, _ := ctx.GetValue(u.FromChat().ID)
+func handleScene(bot *bot.Bot, u t.Update) {
+	state, _ := bot.GetCtxValue(u.FromChat().ID)
 
-	scene.Map[state.Scene](ctx, bot, db, u)
+	scene.Map[state.Scene](bot, u)
 }
 
-func handleAdminCmd(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+func handleAdminCmd(bot *bot.Bot, u t.Update) {
 	if u.Message == nil {
 		return
 	}
@@ -47,7 +45,7 @@ func handleAdminCmd(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	cmd := u.Message.Text
 	if _, exist := scene.Map[cmd]; exist {
 
-		scene.Start(ctx, bot, db, u, cmd)
+		scene.Start(bot, u, cmd)
 		return
 	}
 	switch u.Message.Text {
@@ -58,7 +56,7 @@ func handleAdminCmd(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	}
 }
 
-func handleMenu(bot *bot.Bot, db *sql.DB, u t.Update) {
+func handleMenu(bot *bot.Bot, u t.Update) {
 	if u.FromChat() == nil || u.Message.Text == "/start" {
 		var user t.User
 
@@ -69,58 +67,81 @@ func handleMenu(bot *bot.Bot, db *sql.DB, u t.Update) {
 		}
 
 		fullName := utils.FullName(user.FirstName, user.LastName)
-		controller.SaveUser(db, user.ID, user.UserName, fullName)
+
+		params := db.UpsertUserParams{
+			ID:   user.ID,
+			Name: fullName,
+		}
+
+		if user.UserName != "" {
+			params.Username = pgtype.Text{
+				String: user.UserName,
+				Valid:  true,
+			}
+		}
+
+		db.Query.UpsertUser(bot.Ctx, params)
 		action.SendKeyboard(bot, user.ID, utils.GreetingMsg)
 	}
 }
 
-func handleKeyboard(bot *bot.Bot, db *sql.DB, u t.Update) {
+func handleKeyboard(bot *bot.Bot, u t.Update) {
 	key := u.Message.Text
 
 	switch key {
 	case utils.Timetable:
-		action.SendTimetable(bot, db, u)
+		action.SendTimetable(bot, u)
 	case utils.Leaderboard:
-		action.SendLeaderboard(bot, db, u.FromChat().ID)
+		action.SendLeaderboard(bot, u.FromChat().ID)
 	case utils.Profile:
-		action.SendProfile(bot, db, u.FromChat().ID)
+		action.SendProfile(bot, u.FromChat().ID)
 	case utils.Contact:
 		action.SendContact(bot, u)
 	case utils.Prices:
 		action.SendPrices(bot, u)
 	case utils.Course:
-		action.CourseAction(bot, db, u)
+		action.CourseAction(bot, u)
 	}
 }
 
-func HandleUpdate(ctx *scene.Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
-	if u.FromChat() == nil || (u.Message != nil && strings.HasPrefix(u.Message.Text, "/")) {
-		handleMenu(bot, db, u)
+func HandleUpdate(bot *bot.Bot, u t.Update) {
+	if u.FromChat() == nil {
+		if u.PollAnswer != nil {
+			handlePool(bot, u)
 
-		return
+			return
+		} else if u.Message != nil && strings.HasPrefix(u.Message.Text, "/") {
+			handleMenu(bot, u)
+
+			return
+		}
 	}
 
 	userId, updateWithCallbackQuery := utils.UserIdFromUpdate(u)
 
-	_, ok := ctx.GetValue(userId)
+	_, ok := bot.GetCtxValue(userId)
 
 	if ok {
-		handleScene(ctx, bot, db, u)
+		handleScene(bot, u)
 	} else if updateWithCallbackQuery {
-		handleCallbackQuery(ctx, bot, db, u)
+		handleCallbackQuery(bot, u)
 	} else if slices.Contains(utils.Keyboard, u.Message.Text) {
-		handleKeyboard(bot, db, u)
+		handleKeyboard(bot, u)
 	} else if strings.HasPrefix(u.Message.Text, "/") {
-		handleMenu(bot, db, u)
+		handleMenu(bot, u)
 	} else if utils.IsAdmin(userId) {
-		handleAdminCmd(ctx, bot, db, u)
+		handleAdminCmd(bot, u)
 	}
 }
 
-func HandleUpdates(c *scene.Ctx, bot *bot.Bot, db *sql.DB, updates []t.Update) {
+func HandleUpdates(bot *bot.Bot, updates []t.Update) {
 	for _, update := range updates {
-		HandleUpdate(c, bot, db, update)
+		HandleUpdate(bot, update)
 
 		bot.Offset = update.UpdateID + 1
 	}
+}
+
+func handlePool(bot *bot.Bot, u t.Update) {
+	action.IfUserComesHandler(bot, u.PollAnswer)
 }

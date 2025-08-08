@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bot/src/db"
 	t "bot/src/utils/types"
 	"fmt"
 	"log"
@@ -31,7 +32,7 @@ func LoadEnv() {
 	}
 }
 
-func GenerateTimetableMsg(lessons []t.Lesson, showId bool) t.Message {
+func GenerateTimetableMsg(lessons []db.YogaLesson, showId bool) t.Message {
 	var buttons [][]t.InlineKeyboardButton
 
 	for _, l := range lessons {
@@ -68,18 +69,18 @@ func GenerateTimetableMsg(lessons []t.Lesson, showId bool) t.Message {
 	}
 }
 
-func GenerateLessonMessage(lesson t.LessonWithUsers, userId int64) t.Message {
+func GenerateLessonMessage(lessons []db.GetLessonWithUsersRow, userId int64) t.Message {
 	var msg t.Message
 	var buttons [][]t.InlineKeyboardButton
 	var button []t.InlineKeyboardButton
-	weekday := lesson.Date.Format("Mon")
-	date := lesson.Date.Format("02/01")
-	time := lesson.Time.Format("15:04")
-	description := lesson.Description
+	weekday := lessons[0].Date.Format("Mon")
+	date := lessons[0].Date.Format("02/01")
+	time := lessons[0].Time.Format("15:04")
+	description := lessons[0].Description
 	isUserInLesson := false
 
-	for _, u := range lesson.Users {
-		if u.ID == userId {
+	for _, u := range lessons {
+		if u.UserID.Valid && u.UserID.Int64 == userId {
 			isUserInLesson = true
 			break
 		}
@@ -88,12 +89,12 @@ func GenerateLessonMessage(lesson t.LessonWithUsers, userId int64) t.Message {
 	if isUserInLesson {
 		button = append(button, t.InlineKeyboardButton{
 			Text:         "Unregister from the lesson",
-			CallbackData: fmt.Sprintf("%s=%d", UNREGISTER, lesson.LessonId),
+			CallbackData: fmt.Sprintf("%s=%d", UNREGISTER, lessons[0].LessonID),
 		})
 	} else {
 		button = append(button, t.InlineKeyboardButton{
 			Text:         "Register for the lesson",
-			CallbackData: fmt.Sprintf("%s=%d", REGISTER, lesson.LessonId),
+			CallbackData: fmt.Sprintf("%s=%d", REGISTER, lessons[0].LessonID),
 		})
 	}
 	buttons = append(buttons, button)
@@ -101,7 +102,7 @@ func GenerateLessonMessage(lesson t.LessonWithUsers, userId int64) t.Message {
 	msg.ChatId = userId
 	msg.Text = fmt.Sprintf(
 		"%s 🚀 %s 🚀 %s 🕒\n%s\n\n%s",
-		weekday, date, time, description, yogis(lesson),
+		weekday, date, time, description, yogis(lessons),
 	)
 	msg.ParseMode = "html"
 	msg.ReplyMarkup = t.InlineKeyboardMarkup{
@@ -111,22 +112,26 @@ func GenerateLessonMessage(lesson t.LessonWithUsers, userId int64) t.Message {
 	return msg
 }
 
-func yogis(lesson t.LessonWithUsers) string {
+func yogis(lessons []db.GetLessonWithUsersRow) string {
 	registered := 0
 	students := ""
 
-	for i, l := range lesson.Users {
-		name := l.Name
-
-		if l.Username != "" {
-			name = "@" + l.Username
+	for i, l := range lessons {
+		if l.Name.Valid == false {
+			break
 		}
 
-		students += fmt.Sprintf("\n%d. %s %s", i+1, name, l.Emoji)
+		name := l.Name.String
+
+		if l.Username.Valid && l.Username.String != "" {
+			name = "@" + l.Username.String
+		}
+
+		students += fmt.Sprintf("\n%d. %s %s", i+1, name, l.Emoji.String)
 		registered++
 	}
 
-	yogs := fmt.Sprintf("Booked: <b>%d</b>/%d", registered, lesson.Max)
+	yogs := fmt.Sprintf("Booked: <b>%d</b>/%d", registered, lessons[0].Max)
 
 	return yogs + students
 }
@@ -188,19 +193,24 @@ func UpdateMembership(memb *t.Membership, token t.Token) {
 	memb.Type = token.Type
 }
 
-func ProfileText(u t.UserMembership) string {
-	text := fmt.Sprintf("Your emoji:\n%s%s%s\n\nMembership ends:\n", u.User.Emoji, u.User.Emoji, u.User.Emoji)
+func ProfileText(u db.GetUserWithMembershipRow) string {
+	text := fmt.Sprintf(
+		"Your emoji:\n%s%s%s\n\nMembership ends:\n",
+		u.Emoji,
+		u.Emoji,
+		u.Emoji,
+	)
 
-	if u.Type == nil {
+	if u.Type.Valid == false {
 		text += "Sweetie🍪, you don't have one"
 	} else {
-		ends := u.Ends.Format("2006-01-02")
+		ends := u.Ends.Time.Format("2006-01-02")
 		text += fmt.Sprintf("<b>%s</b>\n\n", ends)
 
-		if *u.Type == NoLimit {
+		if u.Type.Int32 == NoLimit {
 			text += "<b>You</b> are <b>my</b> favourite student🤍"
 		} else {
-			text += fmt.Sprintf("Lessons remaining:\n <b>%d</b>", *u.LessonsAvailable)
+			text += fmt.Sprintf("Lessons remaining:\n <b>%d</b>", u.LessonsAvaliable.Int32)
 		}
 	}
 
@@ -221,51 +231,71 @@ type ValidatedLesson struct {
 	Max         string
 }
 
-func ValidateLessonStr(s string) ValidatedLesson {
-	var lesson ValidatedLesson
+func ValidateLessonInput(s string) (db.AddLessonParams, error) {
+	var lesson db.AddLessonParams
 
 	splited := strings.Split(s, "\n")
 
 	if len(splited) != 4 {
-		return lesson
+		return lesson, fmt.Errorf("Not enough lines")
 	}
 
 	for i := range splited {
 		splited[i] = strings.TrimSpace(splited[i])
 	}
 
-	if len(splited[2]) == 0 ||
-		!DateRegexp().Match([]byte(splited[0])) ||
-		!TimeRegexp().Match([]byte(splited[1])) ||
-		!NumRegexp().Match([]byte(splited[3])) {
-		return lesson
+	date, err := time.Parse("2006-01-02", splited[0])
+
+	if err != nil {
+		return lesson, err
 	}
 
-	lesson.IsValid = true
-	lesson.Date = splited[0]
-	lesson.Time = splited[1]
-	lesson.Description = splited[2]
-	lesson.Max = splited[3]
+	parsedTime, err := time.Parse("15:04", splited[1])
 
-	return lesson
+	if err != nil {
+		return lesson, err
+	}
+
+	if len(splited[2]) == 0 {
+		return lesson, fmt.Errorf("No description")
+	}
+
+	max, err := strconv.Atoi(splited[3])
+
+	if err != nil {
+		return lesson, err
+	}
+
+	lesson.Date = date
+	lesson.Time = parsedTime
+	lesson.Description = splited[2]
+	lesson.Max = max
+
+	return lesson, nil
 }
 
-func UserMemText(u t.UserMembership) string {
+func UserMemText(u db.GetUserWithMembershipRow) string {
 	userName := "null"
 
-	if u.User.Username != "" {
-		userName = u.User.Username
+	if u.Username.Valid {
+		userName = u.Username.String
 	}
 
-	if u.Ends == nil {
-		return fmt.Sprintf("Type <b>Y</b> or <b>N</b>:\n <b>%s - %s</b>\n <b>No membership</b>",
-			u.User.Name, userName)
+	if !u.Ends.Valid {
+		return fmt.Sprintf(
+			"Type <b>Y</b> or <b>N</b>:\n <b>%s - %s</b>\n <b>No membership</b>",
+			u.Name,
+			userName,
+		)
 
 	} else {
-		ends := u.Ends.Format("2006-01-02")
-
-		return fmt.Sprintf("Type <b>Y</b> or <b>N</b>:\n <b>%s - %s</b>\n Ends: <b>%s</b>\nLessons <b>%d</b>",
-			u.User.Name, userName, ends, *u.LessonsAvailable)
+		return fmt.Sprintf(
+			"Type <b>Y</b> or <b>N</b>:\n <b>%s - %s</b>\n Ends: <b>%s</b>\n Lessons <b>%d</b>",
+			u.Name,
+			userName,
+			u.Ends.Time.Format("2006-01-02"),
+			u.LessonsAvaliable.Int32,
+		)
 	}
 }
 
@@ -278,13 +308,13 @@ func medalEmoji(i int) string {
 	return "🎖"
 }
 
-func LeaderboardText(users []t.UserAttendance, userID int64) string {
+func LeaderboardText(users []db.GetUsersAttandanceRow, userID int64) string {
 	text := "The Yoggiest Yogi of the month📅:\n\n"
 	medalI := 0
 	userHasSeen := false
 
 	for i := 0; i < len(users); i++ {
-		if users[i].U.ID == userID {
+		if users[i].ID == userID {
 			userHasSeen = true
 		}
 		if i > 0 && users[i].Count < users[i-1].Count {
@@ -297,8 +327,8 @@ func LeaderboardText(users []t.UserAttendance, userID int64) string {
 
 		text += fmt.Sprintf("%s %s %s (%d times)\n",
 			medalEmoji(medalI),
-			users[i].U.Name,
-			users[i].U.Emoji,
+			users[i].Name,
+			users[i].Emoji,
 			users[i].Count,
 		)
 	}
@@ -343,27 +373,30 @@ func FullName(firstName, lastName string) string {
 	return strings.Trim(fmt.Sprintf("%s %s", firstName, lastName), " ")
 }
 
-func IfUserComesMsg(userId int64, lesson t.Lesson) t.Message {
+func IfUserComesPoll(lesson db.YogaLesson) t.Poll {
 	num1 := rand.Intn(len(strongEmojis))
 	num2 := rand.Intn(len(weakEmojis))
 
-	return t.Message{
-		ChatId:    userId,
-		Text:      fmt.Sprintf("Hey puncake🥞, are you comming tommorow at <b>%s</b>?", lesson.Time.Format("15:04")),
-		ParseMode: "html",
-		ReplyMarkup: t.InlineKeyboardMarkup{
-			InlineKeyboard: [][]t.InlineKeyboardButton{
-				{
-					{
-						Text:         fmt.Sprintf("Yes %s", strongEmojis[num1]),
-						CallbackData: fmt.Sprintf("IF_USER_COMES=%d=%s", lesson.ID, YES),
-					},
-					{
-						Text:         fmt.Sprintf("No %s", weakEmojis[num2]),
-						CallbackData: fmt.Sprintf("IF_USER_COMES=%d=%s", lesson.ID, NO),
-					},
-				},
+	return t.Poll{
+		Question:        fmt.Sprintf("Hey puncake🥞, are you comming tommorow at <b>%s</b>?", lesson.Time.Format("15:04")),
+		Type:            "quiz",
+		CorrectOptionID: 1,
+		IsAnonymous:     false,
+		Options: []t.PollOption{
+			{
+				Text: fmt.Sprintf("Yes %s", strongEmojis[num1]),
+			},
+			{
+				Text: fmt.Sprintf("No %s", weakEmojis[num2]),
 			},
 		},
 	}
+}
+
+func ViolettaId() (int64, error) {
+	adminsStr := os.Getenv("ADMIN")
+
+	admins := strings.Split(adminsStr, ",")
+
+	return strconv.ParseInt(admins[1], 10, 64)
 }

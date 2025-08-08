@@ -943,8 +943,8 @@ type Document struct {
 
 type CustomVideo struct {
 	IsString bool
-	FileId string
-	Object *Video
+	FileId   string
+	Object   *Video
 }
 
 // Video represents a video file.
@@ -1091,7 +1091,7 @@ type PollOption struct {
 // PollAnswer represents an answer of a user in a non-anonymous poll.
 type PollAnswer struct {
 	// PollID is the unique poll identifier
-	PollID string `json:"poll_id"`
+	PollID int64 `json:"poll_id"`
 	// User who changed the answer to the poll
 	User User `json:"user"`
 	// OptionIDs is the 0-based identifiers of poll options chosen by the user.
@@ -1143,6 +1143,11 @@ type Poll struct {
 	//
 	// optional
 	CloseDate int `json:"close_date,omitempty"`
+}
+
+type PollMessage struct {
+	Poll
+	ChatId int64 `json:"chat_id"`
 }
 
 // Location represents a point on the map.

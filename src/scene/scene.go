@@ -4,16 +4,17 @@ import (
 	"bot/src/action"
 	"bot/src/bot"
 	"bot/src/controller"
+	"bot/src/db"
 	"bot/src/utils"
 	t "bot/src/utils/types"
-	"database/sql"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
-type sceneCallback = func(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update)
+type sceneCallback = func(bot *bot.Bot, u t.Update)
 
 var Map = map[string]sceneCallback{
 	utils.SignStudents:       SignStudents,
@@ -26,66 +27,78 @@ var Map = map[string]sceneCallback{
 	utils.EditLesson:         EditLesson,
 }
 
-func Start(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update, scene string) {
-	ctx.SetValue(u.FromChat().ID, SceneState{
+func Start(b *bot.Bot, u t.Update, scene string) {
+	b.SetCtxValue(u.FromChat().ID, bot.SceneState{
 		Scene: scene,
 		Stage: 1,
 	})
 
-	Map[scene](ctx, bot, db, u)
+	Map[scene](b, u)
 }
 
 type signStudentsData struct {
-	Data  t.RegisterdOnLesson
+	Data  db.GetRegisteredOnLessonRow
 	Index int
 }
 
-func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
-
+func SignStudents(bot *bot.Bot, u t.Update) {
 	userId, _ := utils.UserIdFromUpdate(u)
-	state, ok := ctx.GetValue(userId)
+	state, ok := bot.GetCtxValue(userId)
 
 	if !ok {
 		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
-		ctx.End(userId)
+		bot.EndCtx(userId)
 	}
 
 	switch state.Stage {
 	case 1:
-		lessons := controller.GetAvaliableLessons(db)
+		lessons, err := db.Query.GetAvailableLessons(bot.Ctx)
 
-		msg := utils.GenerateTimetableMsg(lessons, true)
+		if err != nil {
+			bot.SendText(userId, utils.WrongMsg)
+			bot.EndCtx(userId)
+			bot.Error("get avaliable lessons error: " + err.Error())
+		}
+
+		msg := utils.GenerateTimetableMsg(lessons, false)
 		msg.ChatId = userId
-		msg.Text = "Send me back an <b>ID</b> of a lesson"
-		msg.ParseMode = "html"
+		msg.Text = "Which lesson are you interested in?"
 		bot.SendMessage(msg)
 	case 2:
-		if u.Message == nil {
+		data := u.CallbackData()
+
+		if data == "" {
 			bot.SendText(userId, "It's not a ID")
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
-		//TODO receive a lessonId also from CallbackQuery
-		lessonId, err := strconv.Atoi(u.Message.Text)
+		lessonAndId := strings.Split(data, "=")
+		lessonId, err := strconv.Atoi(lessonAndId[1])
 
 		if err != nil {
 			bot.SendText(userId, "The ID is not correct")
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
-		wasLessonSigned := controller.IsLessonSigned(db, lessonId)
+		wasLessonSigned := controller.IsLessonSigned(bot.Ctx, lessonId)
 
 		if wasLessonSigned {
 			bot.SendText(userId, "This lesson was signed⚠️")
 		}
 
-		registered := controller.GetRegisteredOnLesson(db, lessonId)
+		registered, err := db.Query.GetRegisteredOnLesson(bot.Ctx, lessonId)
 
-		if len(registered.IDs) == 0 {
-			bot.SendText(userId, "The are no users on this lesson")
-			ctx.End(userId)
+		if err != nil {
+			bot.Error("Error getRegisteredOnLesson: "+err.Error())
+			bot.EndCtx(userId)
+			return
+		}
+
+		if len(registered.Registered) == 0 {
+			bot.SendText(userId, "There are no users on this lesson")
+			bot.EndCtx(userId)
 			return
 		}
 		state.Data = signStudentsData{
@@ -93,59 +106,72 @@ func SignStudents(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			Index: 0,
 		}
 
-		ctx.SetValue(userId, state)
+		bot.SetCtxValue(userId, state)
 
-		userWithMem := controller.GetUserWithMembership(db, registered.IDs[0])
+		userWithMem, err := db.Query.GetUserWithMembership(bot.Ctx, registered.Registered[0])
+
+		if err != nil {
+			bot.SendText(userId, "The ID is not correct")
+			bot.EndCtx(userId)
+			return
+		}
 
 		bot.SendHTML(userId, utils.UserMemText(userWithMem))
 	case 3:
 		data, ok := state.Data.(signStudentsData)
-		ids := data.Data.IDs
+		userIds := data.Data.Registered
 		currIndex := data.Index
 
-		if u.Message == nil || !ok || currIndex >= len(ids) {
+		if u.Message == nil || !ok || currIndex >= len(userIds) {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
 		if u.Message.Text == "Y" {
-			db.Exec(`INSERT INTO yoga.attendance 
-                    (user_id, lesson_id, date) VALUES ($1, $2, $3);`,
-				ids[currIndex], data.Data.LessonId, data.Data.Date)
-			db.Exec(`UPDATE yoga.membership 
-                    SET lessons_avaliable = lessons_avaliable - 1
-                    WHERE user_id=$1;`, ids[currIndex])
+			db.Query.AddAttendance(bot.Ctx, db.AddAttendanceParams{
+				UserID:   userIds[currIndex],
+				LessonID: data.Data.LessonID,
+				Date:     data.Data.Date,
+			})
+			db.Query.DecLessonsAvaliable(bot.Ctx, userIds[currIndex])
 		}
 
 		currIndex++
-		if currIndex >= len(ids) {
+		if currIndex >= len(userIds) {
 			bot.SendText(userId, "Good job!")
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
-		userWithMem := controller.GetUserWithMembership(db, ids[currIndex])
+		userWithMem, err := db.Query.GetUserWithMembership(bot.Ctx, userIds[currIndex])
+
+		if err != nil {
+			bot.SendText(userId, utils.NotANumberMsg)
+			bot.Error("Sign students get user with membership err: " + err.Error())
+			bot.EndCtx(userId)
+			return
+		}
 		bot.SendHTML(userId, utils.UserMemText(userWithMem))
 
 		data.Index = currIndex
 		state.Data = data
 
-		ctx.SetValue(userId, state)
+		bot.SetCtxValue(userId, state)
 
 		return
 	}
 
-	ctx.Next(userId)
+	bot.NextCtx(userId)
 }
 
-func ChangeEmoji(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+func ChangeEmoji(bot *bot.Bot, u t.Update) {
 	userId, _ := utils.UserIdFromUpdate(u)
-	state, ok := ctx.GetValue(userId)
+	state, ok := bot.GetCtxValue(userId)
 
 	if !ok {
 		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
-		ctx.End(userId)
+		bot.EndCtx(userId)
 	}
 
 	switch state.Stage {
@@ -157,33 +183,36 @@ func ChangeEmoji(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			isEmoji := utils.IsEmoji(emoji)
 
 			if isEmoji {
-				controller.UpdateEmoji(db, userId, emoji)
+				db.Query.UpdateEmoji(bot.Ctx, db.UpdateEmojiParams{
+					ID:    userId,
+					Emoji: emoji,
+				})
 				bot.SendText(userId, "Your new emoji: "+emoji)
 			} else {
 				bot.SendText(userId, "Don't make me angry. It's not an emoji 😡")
 			}
 		}
 
-		ctx.End(userId)
+		bot.EndCtx(userId)
 		return
 	}
 
-	ctx.Next(userId)
+	bot.NextCtx(userId)
 }
 
-func AddLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+func AddLessons(bot *bot.Bot, u t.Update) {
 	userId, _ := utils.UserIdFromUpdate(u)
-	state, ok := ctx.GetValue(userId)
+	state, ok := bot.GetCtxValue(userId)
 
 	if !ok {
 		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
-		ctx.End(userId)
+		bot.EndCtx(userId)
 	}
 
 	switch state.Stage {
 	case 1:
 		bot.SendText(userId, utils.AddLessonMsg)
-		ctx.Next(userId)
+		bot.NextCtx(userId)
 	case 2:
 		const FINISH = "Finish"
 
@@ -194,14 +223,14 @@ func AddLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 				bot.SendText(userId, utils.WrongMsg)
 			}
 
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
-		data := utils.ValidateLessonStr(u.Message.Text)
+		lessonParams, err := utils.ValidateLessonInput(u.Message.Text)
 
-		if data.IsValid {
-			controller.AddLesson(db, data)
+		if err == nil {
+			db.Query.AddLesson(bot.Ctx, lessonParams)
 			bot.SendMessage(t.Message{
 				ChatId: userId,
 				Text:   "New lesson was added\n\nYou can add more or or finish🧞‍♂️",
@@ -217,19 +246,19 @@ func AddLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 				},
 			})
 		} else {
-			bot.SendText(userId, "The lesson format is incorrect🔫")
-			ctx.End(userId)
+			bot.SendText(userId, "The lesson format is incorrect🔫\n"+err.Error())
+			bot.EndCtx(userId)
 		}
 	}
 }
 
-func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+func AssignMembership(bot *bot.Bot, u t.Update) {
 	userId, _ := utils.UserIdFromUpdate(u)
-	state, ok := ctx.GetValue(userId)
+	state, ok := bot.GetCtxValue(userId)
 
 	if !ok {
 		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
-		ctx.End(userId)
+		bot.EndCtx(userId)
 	}
 
 	switch state.Stage {
@@ -265,7 +294,7 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	case 2:
 		if u.CallbackQuery == nil {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
@@ -273,7 +302,7 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 		if err == nil {
 			state.Data = memType
-			ctx.SetValue(userId, state)
+			bot.SetCtxValue(userId, state)
 
 			bot.SendMessage(t.Message{
 				ChatId:    userId,
@@ -284,15 +313,15 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	case 3:
 		if u.Message == nil {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
-		sendUserList(ctx, db, bot, userId, u.Message.Text)
+		sendUserList(bot, userId, u.Message.Text)
 	case 4:
 		if u.Message == nil {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
@@ -300,28 +329,27 @@ func AssignMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		data, ok := state.Data.(int)
 
 		if err == nil && ok {
-			membership := controller.UpdateMembership(db, studentId, data)
-
-			action.SendProfile(bot, db, studentId)
+			membership := controller.UpdateMembership(bot.Ctx, studentId, data)
+			action.SendProfile(bot, studentId)
 			bot.SendText(studentId, "Your membership was updated 🌋🧯")
 			bot.SendText(userId, fmt.Sprintf("Gotcha🦾\nLessons avaliable: %d", membership.LessonsAvailable))
 		} else {
 			bot.SendText(userId, "It's not an ID🔫")
 		}
-		ctx.End(userId)
+		bot.EndCtx(userId)
 		return
 	}
 
-	ctx.Next(userId)
+	bot.NextCtx(userId)
 }
 
-func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+func NotifyAboutLessons(bot *bot.Bot, u t.Update) {
 	userId, _ := utils.UserIdFromUpdate(u)
-	state, ok := ctx.GetValue(userId)
+	state, ok := bot.GetCtxValue(userId)
 
 	if !ok {
 		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
-		ctx.End(userId)
+		bot.EndCtx(userId)
 	}
 
 	switch state.Stage {
@@ -332,7 +360,7 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			ReplyMarkup: &utils.ConformationInlineKeyboard,
 		})
 	case 2:
-		ctx.End(userId)
+		bot.EndCtx(userId)
 		if u.CallbackQuery == nil {
 			bot.SendText(userId, utils.WrongMsg)
 			return
@@ -340,7 +368,12 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 		if u.CallbackQuery.Data == "YES" {
 			var wg sync.WaitGroup
-			ids := controller.GetUsersIDs(db)
+			ids, err := db.Query.GetUsersIDs(bot.Ctx)
+
+			if err != nil {
+
+			}
+
 			btns := utils.BuildInlineKeyboard([]string{utils.Timetable})
 
 			for i := range ids {
@@ -361,7 +394,7 @@ func NotifyAboutLessons(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		return
 	}
 
-	ctx.Next(userId)
+	bot.NextCtx(userId)
 }
 
 type freezeMemData struct {
@@ -370,13 +403,13 @@ type freezeMemData struct {
 	Days   int
 }
 
-func FreezeMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+func FreezeMembership(bot *bot.Bot, u t.Update) {
 	userId, _ := utils.UserIdFromUpdate(u)
-	state, ok := ctx.GetValue(userId)
+	state, ok := bot.GetCtxValue(userId)
 
 	if !ok {
 		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
-		ctx.End(userId)
+		bot.EndCtx(userId)
 	}
 
 	Single := "Single"
@@ -395,7 +428,7 @@ func FreezeMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	case 2:
 		if u.CallbackQuery == nil {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
@@ -412,23 +445,23 @@ func FreezeMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			bot.SendHTML(userId, SendNumberDaysMsg)
 		} else {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
-		ctx.SetValue(userId, state)
+		bot.SetCtxValue(userId, state)
 	case 3:
 		if u.Message == nil {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
-		sendUserList(ctx, db, bot, userId, u.Message.Text)
+		sendUserList(bot, userId, u.Message.Text)
 	case 4:
 		if u.Message == nil {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
@@ -439,18 +472,18 @@ func FreezeMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			data.UserId = studentId
 			state.Data = data
 
-			ctx.SetValue(userId, state)
+			bot.SetCtxValue(userId, state)
 
 			bot.SendHTML(userId, SendNumberDaysMsg)
 		} else {
 			bot.SendText(userId, "It's not an ID🔫")
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 	case 5:
 		if u.Message == nil {
 			bot.SendText(userId, utils.NotANumberMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
@@ -458,7 +491,7 @@ func FreezeMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 		if err != nil {
 			bot.SendText(userId, utils.NotANumberMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
@@ -466,7 +499,7 @@ func FreezeMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		data.Days = number
 		state.Data = data
 
-		ctx.SetValue(userId, state)
+		bot.SetCtxValue(userId, state)
 
 		bot.SendMessage(t.Message{
 			ChatId:      userId,
@@ -476,17 +509,25 @@ func FreezeMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	case 6:
 		if u.CallbackQuery == nil {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
 		if u.CallbackQuery.Data == "YES" {
 			var ids []int64
+			var err error
 			var wg sync.WaitGroup
 			data := state.Data.(freezeMemData)
 
 			if data.Type == All {
-				ids = controller.GetUsersIDsWithValidMem(db)
+				ids, err = db.Query.GetUsersIDsWithValidMem(bot.Ctx)
+
+				if err != nil {
+					bot.EndCtx(userId)
+					bot.Error("Get available lesson error: " + err.Error())
+					bot.SendText(userId, "Error: "+err.Error())
+					return
+				}
 			} else {
 				ids = []int64{data.UserId}
 			}
@@ -497,30 +538,33 @@ func FreezeMembership(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 				go func() {
 					defer wg.Done()
 					bot.SendHTML(ids[i], utils.NoClassesMsg)
-					action.SendProfile(bot, db, ids[i])
-					controller.AddDaysToMem(db, ids[i], data.Days)
+					action.SendProfile(bot, ids[i])
+					db.Query.AddDaysToMem(bot.Ctx, db.AddDaysToMemParams{
+						Column1: data.Days,
+						UserID:  ids[i],
+					})
 					bot.SendText(ids[i], utils.UpdatedMembershipMsg)
-					action.SendProfile(bot, db, ids[i])
+					action.SendProfile(bot, ids[i])
 				}()
 			}
 			wg.Wait()
 		}
 
 		bot.SendText(userId, utils.GoodJob)
-		ctx.End(userId)
+		bot.EndCtx(userId)
 		return
 	}
 
-	ctx.Next(userId)
+	bot.NextCtx(userId)
 }
 
-func ForwardAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+func ForwardAll(bot *bot.Bot, u t.Update) {
 	userID, _ := utils.UserIdFromUpdate(u)
-	state, ok := ctx.GetValue(userID)
+	state, ok := bot.GetCtxValue(userID)
 
 	if !ok {
 		bot.Error(fmt.Sprintf("No scene for the user: %d", userID))
-		ctx.End(userID)
+		bot.EndCtx(userID)
 	}
 
 	switch state.Stage {
@@ -533,7 +577,7 @@ func ForwardAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		}
 
 		state.Data = u.Message.MessageID
-		ctx.SetValue(userID, state)
+		bot.SetCtxValue(userID, state)
 
 		bot.SendMessage(t.Message{
 			ChatId:      userID,
@@ -543,27 +587,33 @@ func ForwardAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	case 3:
 		if u.CallbackQuery == nil {
 			bot.SendText(userID, utils.WrongMsg)
-			ctx.End(userID)
+			bot.EndCtx(userID)
 			return
 		}
 
-		state, ok := ctx.GetValue(userID)
+		state, ok := bot.GetCtxValue(userID)
 		if !ok {
 			bot.SendText(userID, utils.WrongMsg)
-			ctx.End(userID)
+			bot.EndCtx(userID)
 			return
 		}
 
 		messageID, ok := state.Data.(int)
 		if !ok {
 			bot.SendText(userID, utils.WrongMsg)
-			ctx.End(userID)
+			bot.EndCtx(userID)
 			return
 		}
 
 		if u.CallbackQuery.Data == "YES" {
 			var idsToBlock []int64
-			ids := controller.GetUsersIDs(db)
+			ids, err := db.Query.GetUsersIDs(bot.Ctx)
+
+			if err != nil {
+				bot.SendText(userID, err.Error())
+				bot.EndCtx(userID)
+				return
+			}
 
 			for i := range ids {
 				_, err := bot.Forward(ids[i], userID, messageID)
@@ -572,20 +622,23 @@ func ForwardAll(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 					idsToBlock = append(idsToBlock, ids[i])
 				}
 			}
-			err := controller.BlockUsers(db, idsToBlock)
+			err = db.Query.BlockUsers(bot.Ctx, idsToBlock)
 
 			if err != nil {
-				bot.Error("Forward all err: " + err.Error())
+				bot.SendText(userID, "BlockUsers err: "+err.Error())
+				bot.EndCtx(userID)
+				return
 			}
+
 			bot.SendText(userID, fmt.Sprintf("Great success, %d blocked yoga bot", len(idsToBlock)))
 		} else {
 			bot.SendText(userID, "Ok")
 		}
-		ctx.End(userID)
+		bot.EndCtx(userID)
 		return
 	}
 
-	ctx.Next(userID)
+	bot.NextCtx(userID)
 }
 
 type editLessonData struct {
@@ -593,23 +646,31 @@ type editLessonData struct {
 	LessonId int
 }
 
-func EditLesson(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
+func EditLesson(bot *bot.Bot, u t.Update) {
 	userId, _ := utils.UserIdFromUpdate(u)
-	state, ok := ctx.GetValue(userId)
+	state, ok := bot.GetCtxValue(userId)
 
 	if !ok {
 		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
-		ctx.End(userId)
+		bot.EndCtx(userId)
 	}
 
-	date := "date"
-	time := "time"
-	description := "description"
-	max := "max"
+	DATE := "date"
+	TIME := "time"
+	DESCRIPTION := "description"
+	MAX := "max"
 
 	switch state.Stage {
 	case 1:
-		lessons := controller.GetAvaliableLessons(db)
+		lessons, err := db.Query.GetAvailableLessons(bot.Ctx)
+
+		if err != nil {
+			bot.EndCtx(userId)
+			bot.Error("Get available lesson error: " + err.Error())
+			bot.SendText(userId, utils.WrongMsg)
+
+			return
+		}
 
 		msg := utils.GenerateTimetableMsg(lessons, false)
 		msg.ChatId = userId
@@ -618,7 +679,7 @@ func EditLesson(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	case 2:
 		if u.CallbackQuery == nil {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
@@ -626,7 +687,7 @@ func EditLesson(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 		if !utils.LessonRegexp().MatchString(data) {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
@@ -635,20 +696,20 @@ func EditLesson(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 
 		if err != nil {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
 		state.Data = editLessonData{
 			LessonId: lessonId,
 		}
-		ctx.SetValue(userId, state)
+		bot.SetCtxValue(userId, state)
 
 		btns := utils.BuildInlineKeyboard([]string{
-			date,
-			time,
-			max,
-			description,
+			DATE,
+			TIME,
+			MAX,
+			DESCRIPTION,
 		})
 
 		bot.SendMessage(t.Message{
@@ -659,24 +720,24 @@ func EditLesson(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 	case 3:
 		if u.CallbackQuery == nil {
 			bot.SendText(userId, utils.WrongMsg)
-			ctx.End(userId)
+			bot.EndCtx(userId)
 			return
 		}
 
 		stateData := state.Data.(editLessonData)
 		stateData.Type = u.CallbackQuery.Data
 		state.Data = stateData
-		ctx.SetValue(userId, state)
+		bot.SetCtxValue(userId, state)
 		text := ""
 
 		switch stateData.Type {
-		case date:
+		case DATE:
 			text = "Send a <b>date</b> in the format YYYY-MM-DD"
-		case time:
+		case TIME:
 			text = "Send a <b>time</b> in the format HH:MM"
-		case description:
+		case DESCRIPTION:
 			text = "Send a <b>description</b> text"
-		case max:
+		case MAX:
 			text = "Send a <b>max membership</b> number"
 		}
 
@@ -692,27 +753,43 @@ func EditLesson(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 		lessonData := state.Data.(editLessonData)
 
 		switch lessonData.Type {
-		case date:
-			if utils.DateRegexp().Match([]byte(value)) {
+		case DATE:
+			date, err := time.Parse("2006-01-02", value)
+
+			if err == nil {
 				isValidValue = true
-				controller.UpdateLessonDate(db, lessonData.LessonId, value)
+				db.Query.UpdateLessonDate(bot.Ctx, db.UpdateLessonDateParams{
+					ID:   lessonData.LessonId,
+					Date: date,
+				})
 			}
-		case time:
-			if utils.TimeRegexp().Match([]byte(value)) {
+		case TIME:
+			parsedTime, err := time.Parse("15:04", value)
+
+			if err == nil {
 				isValidValue = true
-				controller.UpdateLessonTime(db, lessonData.LessonId, value)
+				db.Query.UpdateLessonTime(bot.Ctx, db.UpdateLessonTimeParams{
+					ID:   lessonData.LessonId,
+					Time: parsedTime,
+				})
 			}
-		case description:
+		case DESCRIPTION:
 			if len(value) > 0 {
 				isValidValue = true
-				controller.UpdateLessonDesc(db, lessonData.LessonId, value)
+				db.Query.UpdateLessonDesc(bot.Ctx, db.UpdateLessonDescParams{
+					ID:          lessonData.LessonId,
+					Description: value,
+				})
 			}
-		case max:
+		case MAX:
 			maxInt, err := strconv.Atoi(value)
 
 			if err == nil {
 				isValidValue = true
-				controller.UpdateLessonMax(db, lessonData.LessonId, maxInt)
+				db.Query.UpdateLessonMax(bot.Ctx, db.UpdateLessonMaxParams{
+					ID:  lessonData.LessonId,
+					Max: maxInt,
+				})
 			}
 		}
 
@@ -722,9 +799,9 @@ func EditLesson(ctx *Ctx, bot *bot.Bot, db *sql.DB, u t.Update) {
 			bot.SendText(userId, utils.WrongMsg)
 		}
 
-		ctx.End(userId)
+		bot.EndCtx(userId)
 		return
 	}
 
-	ctx.Next(userId)
+	bot.NextCtx(userId)
 }
