@@ -30,8 +30,7 @@ func Cron(bot *bot.Bot) {
 		action.NotifyAboutSubscriptionEnds(bot)
 	})
 
-	// 	c.AddFunc("0 21 * * *", func() {
-	c.AddFunc("* * * * *", func() {
+	c.AddFunc("0 21 * * *", func() {
 		action.NotifyAboutTommorowLesson(bot)
 	})
 
