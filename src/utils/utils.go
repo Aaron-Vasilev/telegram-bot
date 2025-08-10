@@ -378,7 +378,7 @@ func IfUserComesPoll(lesson db.YogaLesson) t.Poll {
 	num2 := rand.Intn(len(weakEmojis))
 
 	return t.Poll{
-		Question:        fmt.Sprintf("Hey puncake🥞, are you comming tommorow at <b>%s</b>?", lesson.Time.Format("15:04")),
+		Question:        fmt.Sprintf("Hey puncake🥞, are you comming tommorow at %s?", lesson.Time.Format("15:04")),
 		Type:            "quiz",
 		CorrectOptionID: 1,
 		IsAnonymous:     false,
