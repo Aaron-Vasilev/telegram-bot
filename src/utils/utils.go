@@ -380,7 +380,7 @@ func IfUserComesPoll(lesson db.YogaLesson) t.Poll {
 	return t.Poll{
 		Question:        fmt.Sprintf("Hey puncake🥞, are you comming tommorow at %s?", lesson.Time.Format("15:04")),
 		Type:            "quiz",
-		CorrectOptionID: 1,
+		CorrectOptionID: 0,
 		IsAnonymous:     false,
 		Options: []t.PollOption{
 			{
