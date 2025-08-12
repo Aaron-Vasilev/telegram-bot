@@ -110,10 +110,10 @@ func HandleUpdate(bot *bot.Bot, u t.Update) {
 			handlePool(bot, u)
 
 			return
-		} else if u.Message != nil && strings.HasPrefix(u.Message.Text, "/") {
+		} else if u.Message == nil || strings.HasPrefix(u.Message.Text, "/") {
 			handleMenu(bot, u)
 
-			return
+			return 
 		}
 	}
 
