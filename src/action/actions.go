@@ -201,9 +201,8 @@ func SendLesson(bot *bot.Bot, u t.Update) {
 		if l.UserID.Valid && l.UserID.Int64 == chat.ID {
 			fullName := utils.FullName(chat.FirstName, chat.LastName)
 
-			if (
-				(l.Username.Valid && l.Username.String != chat.UserName) || 
-				(l.Name.Valid && fullName != l.Name.String)) {
+			if (l.Username.Valid && l.Username.String != chat.UserName) ||
+				(l.Name.Valid && fullName != l.Name.String) {
 				db.Query.UpdateUserBio(bot.Ctx, db.UpdateUserBioParams{
 					ID:   chat.ID,
 					Name: fullName,
@@ -244,7 +243,14 @@ func RegisterForLesson(bot *bot.Bot, u t.Update) {
 		return
 	}
 
-	controller.ToggleUserInLesson(bot.Ctx, u.FromChat().ID, lessonId, action)
+	err = controller.ToggleUserInLesson(bot.Ctx, u.FromChat().ID, lessonId, action)
+
+	if err != nil {
+		bot.Error("Register for session error: " + err.Error())
+		bot.SendText(u.FromChat().ID, utils.WrongMsg)
+
+		return
+	}
 
 	bot.SendText(u.FromChat().ID, text)
 }

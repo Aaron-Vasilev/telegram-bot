@@ -5,21 +5,24 @@ import (
 	"bot/src/utils"
 	t "bot/src/utils/types"
 	"context"
+	"errors"
 	"time"
 )
 
-func ToggleUserInLesson(ctx context.Context, userId int64, lessonId int, action string) {
+func ToggleUserInLesson(ctx context.Context, userId int64, lessonId int, action string) error {
 	switch action {
 	case "REGISTER":
-		db.Query.RegisterUser(ctx, db.RegisterUserParams{
-			ArrayAppend: userId,
-			LessonID:    lessonId,
+		return db.Query.RegisterUser(ctx, db.RegisterUserParams{
+			UserID:   userId,
+			LessonID: lessonId,
 		})
 	case "UNREGISTER":
-		db.Query.UnregisterUser(ctx, db.UnregisterUserParams{
+		return db.Query.UnregisterUser(ctx, db.UnregisterUserParams{
 			ArrayRemove: userId,
 			LessonID:    lessonId,
 		})
+	default:
+		return errors.New("Unknown action")
 	}
 }
 

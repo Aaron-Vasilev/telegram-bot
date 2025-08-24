@@ -91,7 +91,7 @@ func SignStudents(bot *bot.Bot, u t.Update) {
 		registered, err := db.Query.GetRegisteredOnLesson(bot.Ctx, lessonId)
 
 		if err != nil {
-			bot.Error("Error getRegisteredOnLesson: "+err.Error())
+			bot.Error("Error getRegisteredOnLesson: " + err.Error())
 			bot.EndCtx(userId)
 			return
 		}
@@ -230,7 +230,12 @@ func AddLessons(bot *bot.Bot, u t.Update) {
 		lessonParams, err := utils.ValidateLessonInput(u.Message.Text)
 
 		if err == nil {
-			db.Query.AddLesson(bot.Ctx, lessonParams)
+			err = controller.AddLesson(bot.Ctx, lessonParams)
+
+			if err != nil {
+				bot.Error("Add lesson err: " + err.Error())
+			}
+
 			bot.SendMessage(t.Message{
 				ChatId: userId,
 				Text:   "New lesson was added\n\nYou can add more or or finish🧞‍♂️",

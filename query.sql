@@ -43,8 +43,8 @@ LEFT JOIN yoga.user u ON u.id = ANY(r.registered) WHERE l.id=$1;
 
 -- name: RegisterUser :exec
 UPDATE yoga.registered_users
-SET registered = array_append(registered, $1)
-WHERE lesson_id=$2 AND NOT ($1=ANY(registered));
+SET registered = array_append(registered, @user_id)
+WHERE lesson_id=$1 AND NOT (@user_id=ANY(registered));
 
 -- name: UnregisterUser :exec
 UPDATE yoga.registered_users

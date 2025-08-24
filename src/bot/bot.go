@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -106,14 +107,14 @@ func (bot *Bot) SendLocation(chatId int64, lat float32, long float32) {
 
 func (bot *Bot) Error(text string) {
 	if bot.IsDebug {
-		fmt.Fprintf(os.Stdout, "\033[0;31m Error \033[0m %bot", text)
+		fmt.Fprintf(os.Stdout, "\033[0;31m Error \033[0m %s", text)
 	} else {
 		userId, err := strconv.ParseInt(os.Getenv("ERROR_CHAT_ID"), 10, 64)
 
 		if err == nil {
 			bot.SendText(userId, text)
 		} else {
-			fmt.Println("No ERROR_CHAT_ID")
+			log.Fatal("No ERROR_CHAT_ID")
 		}
 	}
 }
@@ -151,17 +152,18 @@ func Send[T any](bot *Bot, method string, obj T) ([]byte, error) {
 	if bot.IsDebug {
 		var resData t.Response[t.Message]
 		err = json.Unmarshal(body, &resData)
+
 		if err != nil {
-			fmt.Println("Error json.Unmarshal:", err)
+			bot.Error("Error json.Unmarshal: " + err.Error())
 		} else if !resData.Ok {
 			if resData.ErrorCode != 400 && resData.Description != "Bad Request: chat not found" {
-				bot.Error(fmt.Sprintf("Response is not OK, code: %d, %bot", resData.ErrorCode, resData.Description))
+				bot.Error(fmt.Sprintf("Response is not OK, code: %d, %s", resData.ErrorCode, resData.Description))
 			} else {
-				fmt.Println("Response is not OK: ", resData.Description)
+				bot.Error("Response is not OK: " + resData.Description)
 			}
 		} else {
-			bot, _ := json.MarshalIndent(resData.Result, "", "\t")
-			fmt.Println("Messages SEND: ", string(bot))
+			bytes, _ := json.MarshalIndent(resData.Result, "", "\t")
+			fmt.Println("Messages SEND: ", string(bytes))
 		}
 	}
 
@@ -173,22 +175,23 @@ func Call[T any](bot *Bot, method string) T {
 	res, err := http.Get("https://api.telegram.org/bot" + bot.Token + method)
 
 	if err != nil {
-		fmt.Println("Error making the request:", err)
+		bot.Error("Error making the request: " + err.Error())
 	}
 	defer res.Body.Close()
 
 	body, err := io.ReadAll(res.Body)
 
 	if err != nil {
-		fmt.Println("Error while ioutil.ReadAll:", err)
+		bot.Error("Error while ioutil.ReadAll: " + err.Error())
 	}
 
 	err = json.Unmarshal(body, &resData)
 	if err != nil {
-		fmt.Println("Error json.Unmarshal:", err)
+		bot.Error("Error json.Unmarshal: " + err.Error())
 	}
+
 	if !resData.Ok {
-		fmt.Println("Response is not OK")
+		bot.Error("Response is not OK " + resData.Description)
 	}
 
 	if bot.IsDebug {

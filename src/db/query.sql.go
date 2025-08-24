@@ -514,17 +514,17 @@ func (q *Queries) GetUsersIDsWithValidMem(ctx context.Context) ([]int64, error) 
 
 const registerUser = `-- name: RegisterUser :exec
 UPDATE yoga.registered_users
-SET registered = array_append(registered, $1)
-WHERE lesson_id=$2 AND NOT ($1=ANY(registered))
+SET registered = array_append(registered, $2)
+WHERE lesson_id=$1 AND NOT ($2=ANY(registered))
 `
 
 type RegisterUserParams struct {
-	ArrayAppend interface{}
-	LessonID    int
+	LessonID int
+	UserID   interface{}
 }
 
 func (q *Queries) RegisterUser(ctx context.Context, arg RegisterUserParams) error {
-	_, err := q.db.Exec(ctx, registerUser, arg.ArrayAppend, arg.LessonID)
+	_, err := q.db.Exec(ctx, registerUser, arg.LessonID, arg.UserID)
 	return err
 }
 
