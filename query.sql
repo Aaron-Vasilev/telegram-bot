@@ -24,6 +24,9 @@ WHERE m.ends >= NOW() - INTERVAL '2 months' AND is_blocked = false;
 -- name: GetAvailableLessons :many
 SELECT * FROM yoga.lesson WHERE (date >= (now())::date);
 
+-- name: GetLatestLessons :many
+SELECT * FROM yoga.lesson ORDER BY date DESC LIMIT $1;
+
 -- name: UpdateUserBio :exec
 UPDATE yoga.user SET username=$1, name=$2 WHERE id=$3;
 

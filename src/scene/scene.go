@@ -52,7 +52,7 @@ func SignStudents(bot *bot.Bot, u t.Update) {
 
 	switch state.Stage {
 	case 1:
-		lessons, err := db.Query.GetAvailableLessons(bot.Ctx)
+		lessons, err := db.Query.GetLatestLessons(bot.Ctx, 12)
 
 		if err != nil {
 			bot.SendText(userId, utils.WrongMsg)
@@ -68,7 +68,7 @@ func SignStudents(bot *bot.Bot, u t.Update) {
 		data := u.CallbackData()
 
 		if data == "" {
-			bot.SendText(userId, "It's not a ID")
+			bot.SendText(userId, "You need to click on the lesson👺")
 			bot.EndCtx(userId)
 			return
 		}

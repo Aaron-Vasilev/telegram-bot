@@ -239,6 +239,37 @@ func (q *Queries) GetFirstLessonAttendanceId(ctx context.Context, lessonID int) 
 	return id, err
 }
 
+const getLatestLessons = `-- name: GetLatestLessons :many
+SELECT id, date, time, description, max, poll_id FROM yoga.lesson ORDER BY date DESC LIMIT $1
+`
+
+func (q *Queries) GetLatestLessons(ctx context.Context, limit int32) ([]YogaLesson, error) {
+	rows, err := q.db.Query(ctx, getLatestLessons, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []YogaLesson
+	for rows.Next() {
+		var i YogaLesson
+		if err := rows.Scan(
+			&i.ID,
+			&i.Date,
+			&i.Time,
+			&i.Description,
+			&i.Max,
+			&i.PollID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLessonWithUsers = `-- name: GetLessonWithUsers :many
 SELECT
   l.id as lesson_id,
