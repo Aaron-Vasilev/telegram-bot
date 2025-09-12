@@ -15,11 +15,39 @@ import (
 )
 
 type Bot struct {
-	Token    string
-	IsDebug  bool
-	LogLevel int
-	Offset   int
-	Ctx      context.Context
+	Token       string
+	IsDebug     bool
+	IsProd      bool
+	LogLevel    int
+	Offset      int
+	Ctx         context.Context
+	WebhookPort string
+}
+
+func NewBot(token string) *Bot {
+	ctx := context.Background()
+	defer ctx.Done()
+
+	isDebug := os.Getenv("LOG_LEVEL") == "DEBUG"
+	isProd := os.Getenv("ENV") == "production"
+	var webhookPort string
+
+	if !isDebug {
+		webhookPort = os.Getenv("WEBHOOK_PORT")
+
+		if webhookPort == "" {
+			log.Fatalf("WEBHOOK_PORT is not set")
+		}
+	}
+
+	return &Bot{
+		Token:   token,
+		Offset:  0,
+		IsDebug: isDebug,
+		IsProd: isProd,
+		WebhookPort: webhookPort,
+		Ctx:     ctx,
+	}
 }
 
 func (bot *Bot) GetMe() t.TBot {
@@ -237,6 +265,27 @@ func (bot *Bot) SendPool(poll t.PollMessage) (t.Message, error) {
 	}
 
 	return res.Result, nil
+}
+
+func (bot *Bot) GetWebhookInfo() (t.WebhookInfo, error) {
+	return Call[t.WebhookInfo](bot, "/getWebhookInfo"), nil
+}
+
+func (bot *Bot) CheckWebhookStatus() error {
+	info, err := bot.GetWebhookInfo()
+	if err != nil {
+		return fmt.Errorf("failed to get webhook info: %v", err)
+	}
+
+	if bot.IsDebug {
+		fmt.Printf("Webhook status: URL=%s, Pending=%d, LastError=%s\n", info.URL, info.PendingUpdateCount, info.LastErrorMessage)
+	}
+
+	if info.LastErrorMessage != "" {
+		return fmt.Errorf("webhook has errors: %s (date: %d)", info.LastErrorMessage, info.LastErrorDate)
+	}
+
+	return nil
 }
 
 type SceneState struct {

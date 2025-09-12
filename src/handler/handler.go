@@ -7,6 +7,9 @@ import (
 	"bot/src/scene"
 	"bot/src/utils"
 	t "bot/src/utils/types"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"regexp"
 	"slices"
 	"strings"
@@ -144,4 +147,35 @@ func HandleUpdates(bot *bot.Bot, updates []t.Update) {
 
 func handlePool(bot *bot.Bot, u t.Update) {
 	action.IfUserComesHandler(bot, u.PollAnswer)
+}
+
+func WebhookHandler(bot *bot.Bot) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var update t.Update
+		if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+			bot.Error(fmt.Sprintf("Failed to decode webhook update: %v", err))
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					bot.Error(fmt.Sprintf("Panic in webhook handler: %v", r))
+				}
+			}()
+
+			HandleUpdate(bot, update)
+		}()
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}
 }
