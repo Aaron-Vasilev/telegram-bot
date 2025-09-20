@@ -41,6 +41,8 @@ func startPollingMode(bot *bot.Bot) {
 }
 
 func startWebhookMode(bot *bot.Bot) {
+	log.Printf("Starting the webhook")
+
 	if err := bot.CheckWebhookStatus(); err != nil {
 		log.Printf("Webhook status warning: %v", err)
 	}

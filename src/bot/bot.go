@@ -32,7 +32,7 @@ func NewBot(token string) *Bot {
 	isProd := os.Getenv("ENV") == "production"
 	var webhookPort string
 
-	if !isDebug {
+	if isProd {
 		webhookPort = os.Getenv("WEBHOOK_PORT")
 
 		if webhookPort == "" {
