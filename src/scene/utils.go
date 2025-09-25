@@ -6,7 +6,8 @@ import (
 	"fmt"
 )
 
-func sendUserList(bot *bot.Bot, userID int64, search string) {
+func sendUserList(bot *bot.Bot, userID int64, search string) bool {
+	shouldContinue := true
 	users, err := db.Query.FindUsersByName(bot.Ctx, search)
 
 	if err != nil {
@@ -16,17 +17,20 @@ func sendUserList(bot *bot.Bot, userID int64, search string) {
 	if len(users) == 0 {
 		bot.SendText(userID, "There are no users like: "+search)
 		bot.EndCtx(userID)
-		return
-	}
 
-	for i := range users {
-		userName := ""
+		shouldContinue = false
+	} else {
+		for i := range users {
+			userName := ""
 
-		if users[i].Username.Valid {
-			userName = "@" + users[i].Username.String
+			if users[i].Username.Valid {
+				userName = "@" + users[i].Username.String
+			}
+			bot.SendText(userID, fmt.Sprintf("%s %s ID = %d", users[i].Name, userName, users[i].ID))
 		}
-		bot.SendText(userID, fmt.Sprintf("%s %s ID = %d", users[i].Name, userName, users[i].ID))
+
+		bot.SendText(userID, "Send back the ID of the user you want to assign a membership")
 	}
 
-	bot.SendText(userID, "Send back the ID of the user you want to assign a membership")
+	return shouldContinue
 }

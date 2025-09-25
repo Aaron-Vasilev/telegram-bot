@@ -322,7 +322,11 @@ func AssignMembership(bot *bot.Bot, u t.Update) {
 			return
 		}
 
-		sendUserList(bot, userId, u.Message.Text)
+		shouldContinue := sendUserList(bot, userId, u.Message.Text)
+
+		if !shouldContinue {
+			return
+		}
 	case 4:
 		if u.Message == nil {
 			bot.SendText(userId, utils.WrongMsg)
@@ -462,7 +466,11 @@ func FreezeMembership(bot *bot.Bot, u t.Update) {
 			return
 		}
 
-		sendUserList(bot, userId, u.Message.Text)
+		shouldContinue := sendUserList(bot, userId, u.Message.Text)
+
+		if !shouldContinue {
+			return
+		}
 	case 4:
 		if u.Message == nil {
 			bot.SendText(userId, utils.WrongMsg)
