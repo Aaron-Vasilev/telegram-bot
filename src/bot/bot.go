@@ -10,8 +10,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 type Bot struct {
@@ -345,3 +347,48 @@ func (bot *Bot) SetCtxValue(userId int64, state SceneState) {
 
 	bot.Ctx = context.WithValue(bot.Ctx, sceneKey, sMap)
 }
+
+func (bot *Bot) StartLongPulling(handler func(bot *Bot, updates []t.Update)) {
+	for {
+		updates := bot.GetUpdates()
+
+		handler(bot, updates)
+	}
+}
+
+func (bot *Bot) StartWebhook(handler func(bot *Bot) http.HandlerFunc) {
+	log.Printf("Starting the webhook")
+
+	if err := bot.CheckWebhookStatus(); err != nil {
+		log.Printf("Webhook status warning: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/webhook", handler(bot))
+
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	server := &http.Server{
+		Addr:    ":" + bot.WebhookPort,
+		Handler: mux,
+	}
+
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+		<-sigChan
+
+		fmt.Println("Shutting down webhook server...")
+
+		server.Shutdown(context.Background())
+	}()
+
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("Webhook server failed: %v", err)
+	}
+}
+
+
