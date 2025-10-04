@@ -9,8 +9,22 @@ import (
 	"context"
 )
 
+const addPayment = `-- name: AddPayment :exec
+INSERT INTO pizda.payment (user_id, method) VALUES ($1, $2)
+`
+
+type AddPaymentParams struct {
+	UserID int64
+	Method PizdaPaymentMethod
+}
+
+func (q *Queries) AddPayment(ctx context.Context, arg AddPaymentParams) error {
+	_, err := q.db.Exec(ctx, addPayment, arg.UserID, arg.Method)
+	return err
+}
+
 const blockUsers = `-- name: BlockUsers :exec
-UPDATE pizda.user SET is_blocked = true WHERE tg_id = ANY($1::bigint[])
+UPDATE pizda.user SET is_blocked = true WHERE id = ANY($1::bigint[])
 `
 
 func (q *Queries) BlockUsers(ctx context.Context, ids []int64) error {
@@ -18,8 +32,38 @@ func (q *Queries) BlockUsers(ctx context.Context, ids []int64) error {
 	return err
 }
 
+const findUsersByName = `-- name: FindUsersByName :many
+SELECT id, username, first_name, last_name, is_blocked FROM pizda.user WHERE first_name ILIKE '%' || $1::text || '%' OR last_name ILIKE '%' || $1::text || '%' OR username ILIKE '%' || $1::text || '%'
+`
+
+func (q *Queries) FindUsersByName(ctx context.Context, name string) ([]PizdaUser, error) {
+	rows, err := q.db.Query(ctx, findUsersByName, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PizdaUser
+	for rows.Next() {
+		var i PizdaUser
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.FirstName,
+			&i.LastName,
+			&i.IsBlocked,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUsers = `-- name: GetUsers :many
-SELECT id, tg_id, username, first_name, last_name, is_blocked FROM pizda.user WHERE is_blocked = false
+SELECT id, username, first_name, last_name, is_blocked FROM pizda.user WHERE is_blocked = false
 `
 
 func (q *Queries) GetUsers(ctx context.Context) ([]PizdaUser, error) {
@@ -33,7 +77,6 @@ func (q *Queries) GetUsers(ctx context.Context) ([]PizdaUser, error) {
 		var i PizdaUser
 		if err := rows.Scan(
 			&i.ID,
-			&i.TgID,
 			&i.Username,
 			&i.FirstName,
 			&i.LastName,
@@ -50,7 +93,7 @@ func (q *Queries) GetUsers(ctx context.Context) ([]PizdaUser, error) {
 }
 
 const getUsersIDs = `-- name: GetUsersIDs :many
-SELECT tg_id FROM pizda.user WHERE is_blocked = false
+SELECT id FROM pizda.user WHERE is_blocked = false
 `
 
 func (q *Queries) GetUsersIDs(ctx context.Context) ([]int64, error) {
@@ -61,11 +104,41 @@ func (q *Queries) GetUsersIDs(ctx context.Context) ([]int64, error) {
 	defer rows.Close()
 	var items []int64
 	for rows.Next() {
-		var tg_id int64
-		if err := rows.Scan(&tg_id); err != nil {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		items = append(items, tg_id)
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ifUserPays = `-- name: IfUserPays :many
+SELECT id, user_id, method, creation_date, period FROM pizda.payment WHERE user_id = $1 and period @> NOW()
+`
+
+func (q *Queries) IfUserPays(ctx context.Context, userID int64) ([]PizdaPayment, error) {
+	rows, err := q.db.Query(ctx, ifUserPays, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PizdaPayment
+	for rows.Next() {
+		var i PizdaPayment
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Method,
+			&i.CreationDate,
+			&i.Period,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -74,8 +147,8 @@ func (q *Queries) GetUsersIDs(ctx context.Context) ([]int64, error) {
 }
 
 const upsertUser = `-- name: UpsertUser :exec
-INSERT INTO pizda.user (tg_id, username, first_name, last_name) VALUES ($1, $2, $3, $4)
-  ON CONFLICT(tg_id) DO UPDATE SET
+INSERT INTO pizda.user (id, username, first_name, last_name) VALUES ($1, $2, $3, $4)
+  ON CONFLICT(id) DO UPDATE SET
   username = EXCLUDED.username,
   first_name = EXCLUDED.first_name,
   last_name = EXCLUDED.last_name,
@@ -83,7 +156,7 @@ INSERT INTO pizda.user (tg_id, username, first_name, last_name) VALUES ($1, $2, 
 `
 
 type UpsertUserParams struct {
-	TgID      int64
+	ID        int64
 	Username  string
 	FirstName string
 	LastName  string
@@ -91,7 +164,7 @@ type UpsertUserParams struct {
 
 func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
 	_, err := q.db.Exec(ctx, upsertUser,
-		arg.TgID,
+		arg.ID,
 		arg.Username,
 		arg.FirstName,
 		arg.LastName,

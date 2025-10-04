@@ -16,6 +16,14 @@ import (
 	"syscall"
 )
 
+// type commandCallback = func(bot *Bot, u t.Update)
+
+// type Command struct {
+// 	name string
+// 	description string
+// 	fn commandCallback
+// }
+
 type Bot struct {
 	Token       string
 	IsDebug     bool
@@ -24,9 +32,15 @@ type Bot struct {
 	Offset      int
 	Ctx         context.Context
 	WebhookPort string
+	// Commands    []Command
+	// Scenes      map[string]commandCallback
 }
 
 func NewBot(token string) *Bot {
+	if token == "" {
+		log.Fatalf("No token!")
+	}
+
 	ctx := context.Background()
 	defer ctx.Done()
 
@@ -43,12 +57,12 @@ func NewBot(token string) *Bot {
 	}
 
 	return &Bot{
-		Token:   token,
-		Offset:  0,
-		IsDebug: isDebug,
-		IsProd: isProd,
+		Token:       token,
+		Offset:      0,
+		IsDebug:     isDebug,
+		IsProd:      isProd,
 		WebhookPort: webhookPort,
-		Ctx:     ctx,
+		Ctx:         ctx,
 	}
 }
 
@@ -152,6 +166,10 @@ func (bot *Bot) Error(text string) {
 func Send[T any](bot *Bot, method string, obj T) ([]byte, error) {
 	jsonData, err := json.Marshal(obj)
 
+	if bot.IsDebug {
+		fmt.Scanf("Method: %s", method)
+	}
+
 	if err != nil {
 		fmt.Println("Error while json.Marshal:", err)
 	}
@@ -189,7 +207,7 @@ func Send[T any](bot *Bot, method string, obj T) ([]byte, error) {
 			if resData.ErrorCode != 400 && resData.Description != "Bad Request: chat not found" {
 				bot.Error(fmt.Sprintf("Response is not OK, code: %d, %s", resData.ErrorCode, resData.Description))
 			} else {
-				bot.Error("Response is not OK: " + resData.Description)
+				bot.Error("Response is not OK description: " + resData.Description)
 			}
 		} else {
 			bytes, _ := json.MarshalIndent(resData.Result, "", "\t")
@@ -203,6 +221,10 @@ func Send[T any](bot *Bot, method string, obj T) ([]byte, error) {
 func Call[T any](bot *Bot, method string) T {
 	var resData t.Response[T]
 	res, err := http.Get("https://api.telegram.org/bot" + bot.Token + method)
+
+	if bot.IsDebug {
+		fmt.Scanf("Method: %s", method)
+	}
 
 	if err != nil {
 		bot.Error("Error making the request: " + err.Error())
@@ -221,10 +243,11 @@ func Call[T any](bot *Bot, method string) T {
 	}
 
 	if !resData.Ok {
-		bot.Error("Response is not OK " + resData.Description)
+		bot.Error("Get request to Telegram, response is not OK " + resData.Description)
 	}
 
 	if bot.IsDebug {
+		fmt.Scanf("Method: %s", method)
 		bot, _ := json.MarshalIndent(resData.Result, "", "\t")
 		str := string(bot)
 
@@ -391,4 +414,52 @@ func (bot *Bot) StartWebhook(handler func(bot *Bot) http.HandlerFunc) {
 	}
 }
 
+// func (bot *Bot) RegisterCommand(commandName, description string, fn commandCallback) {
+// 	if !strings.HasPrefix("/", commandName) {
+// 		commandName = "/" + commandName
+// 	}
 
+// 	bot.Commands = append(bot.Commands, Command{
+// 		name: commandName,
+// 		description: description,
+// 		fn: fn,
+// 	})
+// }
+
+// func (bot *Bot) HandleCommand(u t.Update) {
+// 	i := slices.IndexFunc(bot.Commands, func(c Command) bool { return c.name == u.Message.Text })
+
+// 	if i == -1 {
+// 		bot.SendText(u.FromChat().ID, "This command s unregistered")
+// 	} else {
+// 		bot.Commands[i].fn(bot, u)
+// 	}
+// }
+
+// func (bot *Bot) SetMyCommands() {
+// 	Send(bot, "/setMyCommands", bot.Commands)
+// }
+
+// func (bot *Bot) RegisterScene(sceneName string, fn commandCallback) {
+// 	bot.Scenes[sceneName] = fn
+// }
+
+// func (bot *Bot) HandleScene(u t.Update) {
+// 	sceneName := u.Message.Text
+// 	sceneCb, exist := bot.Scenes[sceneName]
+
+// 	if exist {
+// 		sceneCb(bot, u)
+// 	} else {
+// 		bot.Error("Scene doesn't exist: " + sceneName)
+// 	}
+// }
+
+// func (bot *Bot) StartScene(u t.Update, sceneName string) {
+// 	bot.SetCtxValue(u.FromChat().ID, SceneState{
+// 		Scene: sceneName,
+// 		Stage: 1,
+// 	})
+
+// 	bot.Scenes[sceneName](bot, u)
+// }

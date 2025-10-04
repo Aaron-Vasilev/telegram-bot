@@ -15,3 +15,15 @@ stop:
 	@supervisorctl shutdown
 sql:
 	@sqlc generate
+#
+#Pizda
+#
+pizda:
+	go run ./src/pizda/main.go
+build:
+	 @go build -o ./tmp/pizda ./src/pizda/main.go
+restart:
+	@go build -o ./tmp/pizda ./src/pizda/main.go
+	@echo Build ends
+	@sudo supervisorctl restart pizda
+	@echo Started

@@ -3,6 +3,7 @@ package handler
 import (
 	"bot/src/action"
 	"bot/src/bot"
+	"bot/src/common"
 	"bot/src/db"
 	"bot/src/scene"
 	"bot/src/utils"
@@ -51,12 +52,17 @@ func handleAdminCmd(bot *bot.Bot, u t.Update) {
 		scene.Start(bot, u, cmd)
 		return
 	}
+
+	var msg t.Message
+
 	switch u.Message.Text {
 	case "ADMIN":
-		action.SendAdminKeyboard(bot, u.Message.From.ID)
+		msg = common.GenerateKeyboardMsg(u.Message.From.ID, utils.AdminKeyboard, "Admin Keyboard")
 	case "USER":
-		action.SendKeyboard(bot, u.Message.From.ID, "User Keyboard")
+		msg = common.GenerateKeyboardMsg(u.Message.From.ID, utils.Keyboard, "User Keyboard")
 	}
+
+	bot.SendMessage(msg)
 }
 
 func handleMenu(bot *bot.Bot, u t.Update) {
@@ -84,7 +90,9 @@ func handleMenu(bot *bot.Bot, u t.Update) {
 		}
 
 		db.Query.UpsertUser(bot.Ctx, params)
-		action.SendKeyboard(bot, user.ID, utils.GreetingMsg)
+		bot.SendMessage(
+			common.GenerateKeyboardMsg(user.ID, utils.Keyboard, utils.GreetingMsg),
+		)
 	}
 }
 

@@ -56,15 +56,15 @@ func (ns NullPizdaPaymentMethod) Value() (driver.Value, error) {
 }
 
 type PizdaPayment struct {
-	ID     int32
-	UserID pgtype.Int4
-	Method PizdaPaymentMethod
-	Date   time.Time
+	ID           int32
+	UserID       int64
+	Method       PizdaPaymentMethod
+	CreationDate time.Time
+	Period       pgtype.Range[pgtype.Date]
 }
 
 type PizdaUser struct {
-	ID        int32
-	TgID      int64
+	ID        int64
 	Username  string
 	FirstName string
 	LastName  string

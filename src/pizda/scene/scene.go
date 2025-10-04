@@ -3,14 +3,13 @@ package scene
 import (
 	"bot/src/bot"
 	"bot/src/pizda/db"
-	"bot/src/pizda/utils"
 	common "bot/src/utils"
 	t "bot/src/utils/types"
 	"fmt"
 )
 
 func RegisterScenes(b *bot.Bot) {
-	b.RegisterScene(utils.ForwardAll, ForwardAll)
+	// b.RegisterScene(utils.ForwardAll, ForwardAll)
 }
 
 func ForwardAll(bot *bot.Bot, u t.Update) {

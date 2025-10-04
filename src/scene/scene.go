@@ -139,7 +139,7 @@ func SignStudents(bot *bot.Bot, u t.Update) {
 
 		currIndex++
 		if currIndex >= len(userIds) {
-			bot.SendText(userId, "Good job!")
+			bot.SendHTML(userId, fmt.Sprintf("Good job!\nThe lesson ID: <b>%d</b>", data.Data.LessonID))
 			bot.EndCtx(userId)
 			return
 		}

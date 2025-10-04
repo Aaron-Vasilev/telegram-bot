@@ -2,7 +2,6 @@ package main
 
 import (
 	"bot/src/bot"
-	"bot/src/pizda/commands"
 	"bot/src/pizda/db"
 	"bot/src/pizda/handler"
 	"bot/src/utils"
@@ -21,4 +20,5 @@ func main() {
 
 	fmt.Println("Started!")
 	bot.StartLongPulling(handler.HandleUpdates)
+	fmt.Println("Finished")
 }

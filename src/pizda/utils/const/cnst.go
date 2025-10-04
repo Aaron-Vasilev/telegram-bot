@@ -7,6 +7,7 @@ const (
 	Purchase = "Преобрести курс 💳"
 
 	// Pay keyboard
+	AssignSubscription = "Ученик оплатил 💳"
 
 	TestTraining = "Пробная тренировка 🧘🏻‍♀️"
 )
@@ -16,5 +17,8 @@ var (
 		Whom,
 		Programm,
 		Purchase,
+	}
+	AdminKeyboard = []string{
+		AssignSubscription,
 	}
 )

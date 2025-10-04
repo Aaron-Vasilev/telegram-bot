@@ -2,31 +2,64 @@ package handler
 
 import (
 	"bot/src/bot"
+	"bot/src/common"
 	"bot/src/pizda/commands"
 	"bot/src/pizda/db"
+	cnst "bot/src/pizda/utils/const"
 	"bot/src/utils"
 	t "bot/src/utils/types"
+	"fmt"
+	"slices"
+	"strconv"
 	"strings"
 )
 
 func handleCallbackQuery(bot *bot.Bot, u t.Update) {
-	data := u.CallbackData()
+	text := u.CallbackData()
 
-	if string(db.PizdaPaymentMethodBIT) == data {
+	if string(db.PizdaPaymentMethodBIT) == text || string(db.PizdaPaymentMethodMIR) == text {
+		if string(db.PizdaPaymentMethodBIT) == text {
+			bot.SendMessage(t.Message{
+				ChatId: u.FromChat().ID,
+				ParseMode: "html",
+				Text:   "Сделай перевод через BIT по номеру телефона:\n<b>0534257328</b>\n\nИли банковский перевод:\n Кому: <b>ארון וויולטה וסילב</b>\n Банк: <b>12</b> (hapoalim)\n Сниф: <b>729</b>\n Номер счёта: <b>86676</b>",
+			})
+		} else {
+			bot.SendMessage(t.Message{
+				ChatId: u.FromChat().ID,
+				ParseMode: "html",
+				Text:   "Отправь мне бансковский перевод на Тинькофф по номеру телефона:\n<b>+79160824901</b>",
+			})
+		}
+		bot.SendMessage(t.Message{
+			ChatId: u.FromChat().ID,
+			Text:   "A потом перешли @vialettochka скрин с переводом☺️",
+		})
+	} else if text == cnst.TestTraining {
+		//SEND VIDEO
 	}
 }
 
 func HandleUpdate(bot *bot.Bot, u t.Update) {
-	if u.Message == nil || strings.HasPrefix(u.Message.Text, "/") {
-		handleMenu(bot, u)
+	if u.FromChat() == nil {
+		if u.Message == nil || strings.HasPrefix(u.Message.Text, "/") {
+			handleMenu(bot, u)
 
-		return
+			return
+		}
 	}
 
-	_, updateWithCallbackQuery := utils.UserIdFromUpdate(u)
+	userId, updateWithCallbackQuery := utils.UserIdFromUpdate(u)
+	_, ok := bot.GetCtxValue(userId)
 
-	if updateWithCallbackQuery {
+	if ok {
+		handleScene(bot, u)
+	} else if updateWithCallbackQuery {
 		handleCallbackQuery(bot, u)
+	} else if slices.Contains(cnst.SaleKeyboard, u.Message.Text) {
+		handleKeyboard(bot, u)
+	} else if utils.IsAdmin(userId) {
+		handleAdminCmd(bot, u)
 	}
 }
 
@@ -40,4 +73,223 @@ func HandleUpdates(bot *bot.Bot, updates []t.Update) {
 
 func handleMenu(bot *bot.Bot, u t.Update) {
 	commands.Start(bot, u)
+}
+
+func handleKeyboard(bot *bot.Bot, u t.Update) {
+	key := u.Message.Text
+
+	switch key {
+	case cnst.Whom:
+		bot.SendMessage(t.Message{
+			ChatId:    u.FromChat().ID,
+			Text:      "1. Ты планируешь беременность сейчас или через 1-2 года и хочешь подготовить себя к этому. Чтобы уменьшить риски и перенести этот сложнейший процесс для организма максимально мяго, и насколько это возможно быстро восстановиться - нужно начать заниматься уже сейчас. Если ты хочешь <b>ЗДОРОВЫЕ</b> беременность, роды, послеродовой период - йога для беременных тут не поможет. Нужна большая комплексная работа с телом, чтобы войти в этот период не просто с сильным выстроенным фундаментом, с внушительным запасом внутреннего ресурса\n2. Ты чувствуешь, что тебе нужно восстановление, заняться собой и своим здоровьем. <b>ТЯЖЕЛЫЙ ПМС</b> каждый месяц? У тебя есть нарушения цикла или заболевания по-женски? Возможно, у тебя слабые мышцы тазового дна, опущение или диастаз. Лишний вес или метаболический синдром? Поликистоз или миомы, новообразования? Для составления практик этом курсе я использовала самые современные протоколы, исследования, консультировалась с гинекологами и проктологами. Поэтому каждая тренировка терапевтирует или профилактирует заболевания\n3. Ты опытная спортсменка в спорт-зале или любительница, ведущая активный образ жизни. Ты уже разбираешься в йоге и тренировках, обожаешь изучать свое тело, но хочешь еще углубить свои знания в области женского здоровья, чтобы разнообразить свою активность новыми техниками, которые сделают тебя еще более здоровой, красивой. Хочешь улучшить интимную жизнь, добавить мягких и спокойных движений, снизить психо-эмоциональное напряжение, укрепить нервную систему\n4. Тебе нужен индивидуальный и системный подход в тренировках, поддерживающий наставник или друг. Я планирую личную работу с каждой участницей: анкетирование, консультация с обсуждением особенностей твоего здоровья, индивидуальный план в зависимости от твоей цели, ответы на вопросы и поддержка. На самом деле - ты получаешь персонального тренера. Заинтересованного в твоем результате",
+			ParseMode: "html",
+			ReplyMarkup: &t.InlineKeyboardMarkup{
+				InlineKeyboard: [][]t.InlineKeyboardButton{
+					{
+						{
+							Text:         cnst.TestTraining,
+							CallbackData: cnst.TestTraining,
+						},
+					},
+				},
+			},
+		})
+	case cnst.Purchase:
+		bot.SendMessage(t.Message{
+			ChatId: u.FromChat().ID,
+			Text:   "Выберите удобный способ оплаты",
+			ReplyMarkup: &t.InlineKeyboardMarkup{
+				InlineKeyboard: [][]t.InlineKeyboardButton{
+					{
+						{
+							Text:         "Для Израиля 🇮🇱\n(Bit, банковский перевод)",
+							CallbackData: string(db.PizdaPaymentMethodBIT),
+						},
+					},
+					{
+						{
+							Text:         "Для России 🇷🇺\n(Tinkoff)",
+							CallbackData: string(db.PizdaPaymentMethodMIR),
+						},
+					},
+				},
+			},
+		})
+
+	}
+}
+
+type sceneCallback = func(bot *bot.Bot, u t.Update)
+
+var sceneMap = map[string]sceneCallback{
+	cnst.AssignSubscription: assignSubscription,
+}
+
+func Start(b *bot.Bot, u t.Update, scene string) {
+	b.SetCtxValue(u.FromChat().ID, bot.SceneState{
+		Scene: scene,
+		Stage: 1,
+	})
+
+	sceneMap[scene](b, u)
+}
+
+func handleAdminCmd(bot *bot.Bot, u t.Update) {
+	if u.Message == nil {
+		return
+	}
+
+	cmd := u.Message.Text
+	if _, exist := sceneMap[cmd]; exist {
+
+		Start(bot, u, cmd)
+		return
+	}
+
+	var msg t.Message
+
+	switch cmd {
+	case "ADMIN":
+		msg = common.GenerateKeyboardMsg(u.Message.From.ID, cnst.AdminKeyboard, "Admin Keyboard")
+	case "USER":
+		msg = common.GenerateKeyboardMsg(u.Message.From.ID, cnst.SaleKeyboard, "User Keyboard")
+	}
+
+	bot.SendMessage(msg)
+}
+
+func handleScene(bot *bot.Bot, u t.Update) {
+	state, _ := bot.GetCtxValue(u.FromChat().ID)
+
+	sceneMap[state.Scene](bot, u)
+}
+
+func assignSubscription(bot *bot.Bot, u t.Update) {
+	userId, _ := utils.UserIdFromUpdate(u)
+	state, ok := bot.GetCtxValue(userId)
+
+	if !ok {
+		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
+		bot.EndCtx(userId)
+	}
+
+	switch state.Stage {
+	case 1:
+		buttons := [][]t.InlineKeyboardButton{
+			{
+				{
+					Text:         "🇮🇱  Bit, Hapoalim",
+					CallbackData: string(db.PizdaPaymentMethodBIT),
+				},
+			},
+			{
+				{
+					Text:         "🇷🇺 Tinkoff",
+					CallbackData: string(db.PizdaPaymentMethodMIR),
+				},
+			},
+		}
+
+		bot.SendMessage(t.Message{
+			Text:   "Оплата была произведена по",
+			ChatId: userId,
+			ReplyMarkup: &t.InlineKeyboardMarkup{
+				InlineKeyboard: buttons,
+			},
+		})
+	case 2:
+		if u.CallbackQuery == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			bot.EndCtx(userId)
+			return
+		}
+
+		state.Data = u.CallbackQuery.Data
+		bot.SetCtxValue(userId, state)
+
+		bot.SendMessage(t.Message{
+			ChatId:    userId,
+			Text:      "Пришил мне ник, фамилию или имя пользователя",
+			ParseMode: "html",
+		})
+	case 3:
+		if u.Message == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			bot.EndCtx(userId)
+			return
+		}
+
+		shouldContinue := sendUserList(bot, userId, u.Message.Text)
+
+		if !shouldContinue {
+			return
+		}
+	case 4:
+		if u.Message == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			bot.EndCtx(userId)
+			return
+		}
+
+		payerId, err := strconv.ParseInt(u.Message.Text, 10, 64)
+		var method db.PizdaPaymentMethod
+		ok := false
+		if str, isStr := state.Data.(string); isStr {
+			method = db.PizdaPaymentMethod(str)
+			ok = true
+		}
+
+		if err == nil && ok {
+			err := db.Query.AddPayment(bot.Ctx, db.AddPaymentParams{
+				UserID: payerId,
+				Method: method,
+			})
+
+			if err != nil {
+				bot.SendText(payerId, "Your membership was updated 🌋🧯")
+				bot.SendText(userId, "Успеx")
+			} else {
+				bot.SendText(userId, utils.WrongMsg)
+			}
+		} else {
+			bot.SendText(userId, "It's not an ID🔫")
+		}
+
+		bot.EndCtx(userId)
+		return
+	}
+
+	bot.NextCtx(userId)
+}
+
+func sendUserList(bot *bot.Bot, userID int64, search string) bool {
+	shouldContinue := true
+	textWithUsers := ""
+	users, err := db.Query.FindUsersByName(bot.Ctx, search)
+
+	if err != nil {
+		bot.Error("find users by name error:" + err.Error())
+	}
+
+	if len(users) == 0 {
+		bot.SendText(userID, "There are no users like: "+search)
+		bot.EndCtx(userID)
+
+		shouldContinue = false
+	} else {
+		for i := range users {
+			userName := ""
+
+			if users[i].Username != "" {
+				userName = "@" + users[i].Username
+			}
+			textWithUsers += fmt.Sprintf("%s %s %s ID = %d\n", users[i].FirstName, users[i].LastName, userName, users[i].ID)
+		}
+
+		bot.SendText(userID, textWithUsers)
+		bot.SendText(userID, "Send back the ID of the user")
+	}
+
+	return shouldContinue
 }

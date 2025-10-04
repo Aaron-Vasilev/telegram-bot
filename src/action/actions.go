@@ -152,35 +152,6 @@ func SendAdminKeyboard(bot *bot.Bot, chatId int64) {
 	bot.SendMessage(msg)
 }
 
-func SendKeyboard(bot *bot.Bot, chatId int64, text string) {
-	var keyboard [][]t.KeyboardButton
-	var pair []t.KeyboardButton
-
-	for i := range utils.Keyboard {
-		if len(pair) == 2 {
-			keyboard = append(keyboard, slices.Clone(pair))
-			pair = pair[:0]
-		}
-
-		pair = append(pair, t.KeyboardButton{
-			Text: utils.Keyboard[i],
-		})
-	}
-	keyboard = append(keyboard, pair)
-	replyKeyboard := t.ReplyKeyboardMarkup{
-		Keyboard:       keyboard,
-		ResizeKeyboard: true,
-	}
-
-	msg := t.Message{
-		Text:        text,
-		ChatId:      chatId,
-		ReplyMarkup: &replyKeyboard,
-	}
-
-	bot.SendMessage(msg)
-}
-
 func SendLesson(bot *bot.Bot, u t.Update) {
 	lessonId, err := strconv.Atoi(strings.Split(u.CallbackQuery.Data, "=")[1])
 
