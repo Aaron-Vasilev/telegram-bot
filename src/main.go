@@ -25,3 +25,5 @@ func main() {
 		bot.StartLongPulling(handler.HandleUpdates)
 	}
 }
+//TODO FAILD if user sends sticker
+

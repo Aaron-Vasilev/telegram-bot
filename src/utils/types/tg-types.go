@@ -654,6 +654,7 @@ type Message struct {
 	// optional
 	Action string            `json:"action,omitempty"`
 	Media  []InputMediaPhoto `json:"media,omitempty"`
+	LinkPreviewOptions  LinkPreviewOptions `json:"link_preview_options,omitempty"`
 }
 
 // Time converts the message timestamp into a Time.
@@ -3371,4 +3372,12 @@ type PreCheckoutQuery struct {
 	//
 	// optional
 	OrderInfo *OrderInfo `json:"order_info,omitempty"`
+}
+
+type LinkPreviewOptions struct {
+	URL string `json:"url,omitempty"`
+	IsDisabled bool `json:"is_disabled,omitempty"`
+	PreferSmallMedia bool `json:"prefer_small_media,omitempty"`
+	PreferLargeMedia bool `json:"prefer_large_media,omitempty"`
+	ShowAboveText     bool `json:"show_above_text,omitempty"`
 }

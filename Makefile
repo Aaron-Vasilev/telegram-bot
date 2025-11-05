@@ -20,9 +20,9 @@ sql:
 #
 pizda:
 	go run ./src/pizda/main.go
-build:
+pizda_build:
 	 @go build -o ./tmp/pizda ./src/pizda/main.go
-restart:
+pizda_restart:
 	@go build -o ./tmp/pizda ./src/pizda/main.go
 	@echo Build ends
 	@sudo supervisorctl restart pizda
