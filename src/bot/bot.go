@@ -127,15 +127,7 @@ func (bot *Bot) SendPhotoById(chatId int64, fileId string) {
 	Send(bot, "/sendPhoto", msg)
 }
 
-func (bot *Bot) SendVideoById(chatId int64, fileId string) {
-	msg := t.Message{
-		ChatId: chatId,
-		Video: &t.CustomVideo{
-			FileId:   fileId,
-			IsString: true,
-		},
-	}
-
+func (bot *Bot) SendVideoById(msg t.Message) {
 	Send(bot, "/sendVideo", msg)
 }
 
