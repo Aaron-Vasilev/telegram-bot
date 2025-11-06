@@ -379,7 +379,38 @@ func (bot *Bot) StartLongPulling(handler func(bot *Bot, updates []t.Update)) {
 	}
 }
 
-func (bot *Bot) StartWebhook(handler func(bot *Bot) http.HandlerFunc) {
+func webhookHandler(bot *Bot, handleUpdate func(bot *Bot, update t.Update)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var update t.Update
+		if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+			bot.Error(fmt.Sprintf("Failed to decode webhook update: %v", err))
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					bot.Error(fmt.Sprintf("Panic in webhook handler: %v", r))
+				}
+			}()
+
+			handleUpdate(bot, update)
+		}()
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}
+}
+
+func (bot *Bot) StartWebhook(handler func(bot *Bot, update t.Update)) {
 	log.Printf("Starting the webhook")
 
 	if err := bot.CheckWebhookStatus(); err != nil {
@@ -387,7 +418,7 @@ func (bot *Bot) StartWebhook(handler func(bot *Bot) http.HandlerFunc) {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/webhook", handler(bot))
+	mux.HandleFunc("/webhook", webhookHandler(bot, handler))
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

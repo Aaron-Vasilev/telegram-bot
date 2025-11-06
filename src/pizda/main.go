@@ -19,6 +19,9 @@ func main() {
 	defer connection.Close(bot.Ctx)
 
 	fmt.Println("Started!")
-	bot.StartLongPulling(handler.HandleUpdates)
-	fmt.Println("Finished")
+	if bot.IsProd {
+		bot.StartWebhook(handler.HandleUpdate)
+	} else {
+		bot.StartLongPulling(handler.HandleUpdates)
+	}
 }

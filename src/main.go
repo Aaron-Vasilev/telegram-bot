@@ -20,7 +20,7 @@ func main() {
 	cron.Cron(bot)
 
 	if bot.IsProd {
-		bot.StartWebhook(handler.WebhookHandler)
+		bot.StartWebhook(handler.HandleUpdate)
 	} else {
 		bot.StartLongPulling(handler.HandleUpdates)
 	}
