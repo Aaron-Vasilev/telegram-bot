@@ -385,7 +385,6 @@ func webhookHandler(bot *Bot, handleUpdate func(bot *Bot, update t.Update)) http
 		var update t.Update
 		if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 			bot.Error(fmt.Sprintf("Failed to decode webhook update: %v", err))
-			http.Error(w, "Bad Request", http.StatusBadRequest)
 
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`{"status":"ok"}`))
