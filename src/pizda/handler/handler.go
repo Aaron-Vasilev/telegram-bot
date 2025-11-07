@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func handleCallbackQuery(bot *bot.Bot, u t.Update) {
@@ -108,6 +109,8 @@ func handleKeyboard(bot *bot.Bot, u t.Update) {
 		})
 	case cnst.Programm:
 		sendProgramm(bot, u.FromChat().ID)
+	case cnst.TestTraining:
+		sendTestTraining(bot, u.FromChat().ID)
 	}
 }
 
@@ -309,19 +312,22 @@ func sendProgramm(bot *bot.Bot, userId int64) {
 	}
 
 	bot.SendMediaGroup(userId, media)
-	bot.SendMessage(t.Message{
-		ChatId: userId,
-		Text:   "Давай узнаем подходим ли мы друг другу👩‍❤️‍💋‍👩?",
-		ReplyMarkup: &t.InlineKeyboardMarkup{
-			InlineKeyboard: [][]t.InlineKeyboardButton{
-				{
+
+	time.AfterFunc(time.Second*10, func() {
+		bot.SendMessage(t.Message{
+			ChatId: userId,
+			Text:   "Давай узнаем подходим ли мы друг другу👩‍❤️‍💋‍👩?",
+			ReplyMarkup: &t.InlineKeyboardMarkup{
+				InlineKeyboard: [][]t.InlineKeyboardButton{
 					{
-						Text:         "Пройти пробную тренировку🤸‍♀️",
-						CallbackData: cnst.TestTraining,
+						{
+							Text:         "Пройти пробную тренировку🤸‍♀️",
+							CallbackData: cnst.TestTraining,
+						},
 					},
 				},
 			},
-		},
+		})
 	})
 }
 
@@ -346,6 +352,8 @@ func sendToWhom(bot *bot.Bot, userId int64) {
 func sendTestTraining(bot *bot.Bot, chatId int64) {
 	msg := t.Message{
 		ChatId:         chatId,
+		Text: "Посмотри это видео чтобы понять подходим ли мы друг-другу по вайбу😎\nЭто видео средней сложности. В курсе, мы начнём с простых практик и будем двигаться в сторону более продвинутых💪",
+		ParseMode: "html",
 		ProtectContent: true,
 		Video: &t.CustomVideo{
 			FileId:   "BAACAgIAAxkBAAIBmmkNAzXDBISkgMPEZrEgzCH0iwsOAAJwjgACQgpoSN7jz9up7CqcNgQ",
