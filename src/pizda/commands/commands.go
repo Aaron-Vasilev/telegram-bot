@@ -17,6 +17,14 @@ func Start(bot *bot.Bot, u t.Update) {
 		user = *u.Message.From
 	}
 
+	bot.SendMessage(
+		common.GenerateKeyboardMsg(
+			user.ID,
+			cnst.SaleKeyboard,
+			"⬇️ Внизу, для удобства, есть клавиатура",
+		),
+	)
+
 	if u.Message == nil || u.Message.Text == "/start" {
 		// 		payments, err := db.Query.IfUserPays(bot.Ctx, user.ID)
 
@@ -48,12 +56,4 @@ func Start(bot *bot.Bot, u t.Update) {
 			Username:  user.UserName,
 		})
 	}
-
-	bot.SendMessage(
-		common.GenerateKeyboardMsg(
-			user.ID,
-			cnst.SaleKeyboard,
-			"⬇️ Внизу для удобства есть клавиатура ⬇️",
-		),
-	)
 }
