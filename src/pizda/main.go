@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	utils.LoadEnv("./src/pizda/.env")
+	utils.LoadEnv()
 
 	bot := bot.NewBot(os.Getenv("TOKEN"))
 	connection := db.ConnectDB(bot)
