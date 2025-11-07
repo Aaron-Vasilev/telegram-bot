@@ -47,7 +47,7 @@ func SendContact(bot *bot.Bot, u t.Update) {
 
 	bot.SendMessage(t.Message{
 		ChatId: u.FromChat().ID,
-		Photo:  "https://bot-telega.s3.il-central-1.amazonaws.com/door.jpg",
+		Photo:  &t.MessagePhoto{FileID: "https://bot-telega.s3.il-central-1.amazonaws.com/door.jpg"},
 	})
 }
 

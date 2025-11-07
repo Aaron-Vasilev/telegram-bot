@@ -121,7 +121,7 @@ func (bot *Bot) SendSticker(chatId int64, stickerId string) {
 func (bot *Bot) SendPhotoById(chatId int64, fileId string) {
 	msg := t.Message{
 		ChatId: chatId,
-		Photo:  fileId,
+		Photo:  &t.MessagePhoto{FileID: fileId},
 	}
 
 	Send(bot, "/sendPhoto", msg)

@@ -480,10 +480,12 @@ type Message struct {
 	//
 	// optional
 	Document *Document `json:"document,omitempty"`
-	// Photo message is a photo, available sizes of the photo;
+	// Photo message is a photo. When returned by Telegram it is an array of
+	// PhotoSize, when sending a message it can be a file ID/string. We wrap the
+	// value to support both directions.
 	//
 	// optional
-	Photo string `json:"photo,omitempty"`
+	Photo *MessagePhoto `json:"photo,omitempty"`
 	// Sticker message is a sticker, information about the sticker;
 	//
 	// optional
@@ -656,6 +658,39 @@ type Message struct {
 	Media              []InputMediaPhoto  `json:"media,omitempty"`
 	LinkPreviewOptions LinkPreviewOptions `json:"link_preview_options,omitempty"`
 	ProtectContent     bool               `json:"protect_content,omitempty"`
+}
+
+// MessagePhoto is a helper type that can unmarshal a Telegram "photo" field
+// that is either an array of PhotoSize (when receiving updates) or a string/
+// file identifier (when sending messages).
+type MessagePhoto struct {
+	FileID string
+	Sizes  []PhotoSize
+}
+
+func (mp *MessagePhoto) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 || string(data) == "null" {
+		return nil
+	}
+
+	switch data[0] {
+	case '"':
+		return json.Unmarshal(data, &mp.FileID)
+	case '[':
+		return json.Unmarshal(data, &mp.Sizes)
+	default:
+		return json.Unmarshal(data, &mp.FileID)
+	}
+}
+
+func (mp MessagePhoto) MarshalJSON() ([]byte, error) {
+	if mp.FileID != "" {
+		return json.Marshal(mp.FileID)
+	}
+	if len(mp.Sizes) > 0 {
+		return json.Marshal(mp.Sizes)
+	}
+	return []byte("null"), nil
 }
 
 // Time converts the message timestamp into a Time.
