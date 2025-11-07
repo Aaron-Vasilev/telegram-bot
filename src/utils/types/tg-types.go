@@ -947,6 +947,7 @@ type CustomVideo struct {
 	IsString bool
 	FileId   string
 	Object   *Video
+	Caption  string  
 }
 
 // Video represents a video file.
