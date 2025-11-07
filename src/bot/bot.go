@@ -377,6 +377,8 @@ func webhookHandler(bot *Bot, handleUpdate func(bot *Bot, update t.Update)) http
 
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"ok"}`))
 			return
 		}
 
@@ -384,6 +386,9 @@ func webhookHandler(bot *Bot, handleUpdate func(bot *Bot, update t.Update)) http
 		if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 			bot.Error(fmt.Sprintf("Failed to decode webhook update: %v", err))
 			http.Error(w, "Bad Request", http.StatusBadRequest)
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"ok"}`))
 			return
 		}
 

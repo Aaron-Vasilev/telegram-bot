@@ -12,7 +12,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func handleCallbackQuery(bot *bot.Bot, u t.Update) {
