@@ -243,8 +243,12 @@ func SendHowToFind(bot *bot.Bot, u t.Update) {
 			},
 		},
 	}
+	msg := t.Message{
+		ChatId: u.FromChat().ID,
+		Media:  media,
+	}
 
-	bot.SendMediaGroup(u.FromChat().ID, media)
+	bot.SendMediaGroup(msg)
 }
 
 func NotifyAboutSubscriptionEnds(bot *bot.Bot) {

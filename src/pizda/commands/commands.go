@@ -41,7 +41,7 @@ func Start(bot *bot.Bot, u t.Update) {
 				InlineKeyboard: [][]t.InlineKeyboardButton{
 					{
 						{
-							Text:         "Давай узнаем, подходит ли тебе этот курс🤔?",
+							Text:         "Подходит ли мне этот курс🤔?",
 							CallbackData: cnst.Whom,
 						},
 					},

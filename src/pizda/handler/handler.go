@@ -43,6 +43,8 @@ func handleCallbackQuery(bot *bot.Bot, u t.Update) {
 		sendToWhom(bot, u.FromChat().ID)
 	} else if text == cnst.Purchase {
 		purchase(bot, u.FromChat().ID)
+	} else if text == cnst.Prices {
+		sendPrices(bot, u.FromChat().ID)
 	}
 }
 
@@ -91,6 +93,8 @@ func handleKeyboard(bot *bot.Bot, u t.Update) {
 		sendProgramm(bot, u.FromChat().ID)
 	case cnst.TestTraining:
 		sendTestTraining(bot, u.FromChat().ID)
+	case cnst.Prices:
+		sendPrices(bot, u.FromChat().ID)
 	}
 }
 
@@ -291,10 +295,13 @@ func sendProgramm(bot *bot.Bot, userId int64) {
 		},
 	}
 
-	bot.SendMediaGroup(userId, media)
+	bot.SendMediaGroup(t.Message{
+		ChatId: userId,
+		Media: media,
+	})
 	bot.SendMessage(t.Message{
 		ChatId: userId,
-		Text:   "Давай узнаем подходим ли мы друг другу👩‍❤️‍💋‍👩?",
+		Text:   "Подходим ли мы друг другу👩‍❤️‍💋‍👩?",
 		ReplyMarkup: &t.InlineKeyboardMarkup{
 			InlineKeyboard: [][]t.InlineKeyboardButton{
 				{
@@ -329,7 +336,7 @@ func sendToWhom(bot *bot.Bot, userId int64) {
 func sendTestTraining(bot *bot.Bot, chatId int64) {
 	msg := t.Message{
 		ChatId:         chatId,
-		ParseMode: "html",
+		ParseMode:      "html",
 		ProtectContent: true,
 		Video: &t.CustomVideo{
 			FileId:   "BAACAgIAAxkBAAIBmmkNAzXDBISkgMPEZrEgzCH0iwsOAAJwjgACQgpoSN7jz9up7CqcNgQ",
@@ -340,8 +347,8 @@ func sendTestTraining(bot *bot.Bot, chatId int64) {
 			InlineKeyboard: [][]t.InlineKeyboardButton{
 				{
 					{
-						Text:         cnst.Purchase,
-						CallbackData: cnst.Purchase,
+						Text:         cnst.Prices,
+						CallbackData: cnst.Prices,
 					},
 				},
 			},
@@ -367,6 +374,42 @@ func purchase(bot *bot.Bot, chatId int64) {
 					{
 						Text:         "Для России 🇷🇺\n(Tinkoff)",
 						CallbackData: string(db.PizdaPaymentMethodMIR),
+					},
+				},
+			},
+		},
+	})
+}
+
+func sendPrices(bot *bot.Bot, chatId int64) {
+	msg := t.Message{
+		ChatId:         chatId,
+		Media: []t.InputMediaPhoto{
+			{
+				BaseInputMedia: t.BaseInputMedia{
+					Type:    "photo",
+					Media:   "https://bot-telega.s3.il-central-1.amazonaws.com/pizda/plan_1.JPG",
+					Caption: "Программа моего курса 📜",
+				},
+			},
+			{
+				BaseInputMedia: t.BaseInputMedia{
+					Type:  "photo",
+					Media: "https://bot-telega.s3.il-central-1.amazonaws.com/pizda/plan_2.jpg",
+				},
+			},
+		},
+	}
+	bot.SendMediaGroup(msg)
+	bot.SendMessage(t.Message{
+		ChatId: chatId,
+		Text:   "Готова начать🌸?",
+		ReplyMarkup: &t.InlineKeyboardMarkup{
+			InlineKeyboard: [][]t.InlineKeyboardButton{
+				{
+					{
+						Text:         cnst.Purchase,
+						CallbackData: cnst.Purchase,
 					},
 				},
 			},
