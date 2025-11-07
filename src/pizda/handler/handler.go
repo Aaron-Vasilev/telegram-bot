@@ -41,6 +41,8 @@ func handleCallbackQuery(bot *bot.Bot, u t.Update) {
 		sendProgramm(bot, u.FromChat().ID)
 	} else if text == cnst.Whom {
 		sendToWhom(bot, u.FromChat().ID)
+	} else if text == cnst.Purchase {
+		purchase(bot, u.FromChat().ID)
 	}
 }
 
@@ -84,26 +86,7 @@ func handleKeyboard(bot *bot.Bot, u t.Update) {
 	case cnst.Whom:
 		sendToWhom(bot, u.FromChat().ID)
 	case cnst.Purchase:
-		bot.SendMessage(t.Message{
-			ChatId: u.FromChat().ID,
-			Text:   "Выберите удобный способ оплаты",
-			ReplyMarkup: &t.InlineKeyboardMarkup{
-				InlineKeyboard: [][]t.InlineKeyboardButton{
-					{
-						{
-							Text:         "Для Израиля 🇮🇱\n(Bit, банковский перевод)",
-							CallbackData: string(db.PizdaPaymentMethodBIT),
-						},
-					},
-					{
-						{
-							Text:         "Для России 🇷🇺\n(Tinkoff)",
-							CallbackData: string(db.PizdaPaymentMethodMIR),
-						},
-					},
-				},
-			},
-		})
+		purchase(bot, u.FromChat().ID)
 	case cnst.Programm:
 		sendProgramm(bot, u.FromChat().ID)
 	case cnst.TestTraining:
@@ -366,4 +349,27 @@ func sendTestTraining(bot *bot.Bot, chatId int64) {
 	}
 
 	bot.SendVideoById(msg)
+}
+
+func purchase(bot *bot.Bot, chatId int64) {
+	bot.SendMessage(t.Message{
+		ChatId: chatId,
+		Text:   "Выберите удобный способ оплаты",
+		ReplyMarkup: &t.InlineKeyboardMarkup{
+			InlineKeyboard: [][]t.InlineKeyboardButton{
+				{
+					{
+						Text:         "Для Израиля 🇮🇱\n(Bit, банковский перевод)",
+						CallbackData: string(db.PizdaPaymentMethodBIT),
+					},
+				},
+				{
+					{
+						Text:         "Для России 🇷🇺\n(Tinkoff)",
+						CallbackData: string(db.PizdaPaymentMethodMIR),
+					},
+				},
+			},
+		},
+	})
 }
