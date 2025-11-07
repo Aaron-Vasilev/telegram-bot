@@ -162,10 +162,6 @@ func (bot *Bot) Error(text string) {
 func Send[T any](bot *Bot, method string, obj T) ([]byte, error) {
 	jsonData, err := json.Marshal(obj)
 
-	if bot.IsDebug {
-		fmt.Scanf("Method: %s", method)
-	}
-
 	if err != nil {
 		fmt.Println("Error while json.Marshal:", err)
 	}
@@ -219,7 +215,7 @@ func Call[T any](bot *Bot, method string) T {
 	res, err := http.Get("https://api.telegram.org/bot" + bot.Token + method)
 
 	if bot.IsDebug {
-		fmt.Scanf("Method: %s", method)
+		fmt.Printf("Method: %s\n", method)
 	}
 
 	if err != nil {
@@ -243,7 +239,7 @@ func Call[T any](bot *Bot, method string) T {
 	}
 
 	if bot.IsDebug {
-		fmt.Scanf("Method: %s", method)
+		fmt.Printf("Method: %s\n", method)
 		bot, _ := json.MarshalIndent(resData.Result, "", "\t")
 		str := string(bot)
 

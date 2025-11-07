@@ -45,12 +45,10 @@ func handleCallbackQuery(bot *bot.Bot, u t.Update) {
 }
 
 func HandleUpdate(bot *bot.Bot, u t.Update) {
-	if u.FromChat() == nil {
-		if u.Message == nil || strings.HasPrefix(u.Message.Text, "/") {
-			handleMenu(bot, u)
+	if u.FromChat() == nil || (u.Message == nil || strings.HasPrefix(u.Message.Text, "/")) {
+		handleMenu(bot, u)
 
-			return
-		}
+		return
 	}
 
 	userId, updateWithCallbackQuery := utils.UserIdFromUpdate(u)
