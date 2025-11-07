@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	utils.LoadEnv()
+	utils.LoadEnv("./.env")
 
 	bot := bot.NewBot(os.Getenv("TOKEN"))
 	connection := db.ConnectDB(bot)

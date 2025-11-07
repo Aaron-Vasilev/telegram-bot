@@ -23,6 +23,7 @@ pizda:
 pizda_build:
 	 @go build -o ./tmp/pizda ./src/pizda/main.go
 pizda_restart:
+	@git pull
 	@go build -o ./tmp/pizda ./src/pizda/main.go
 	@echo Build ends
 	@sudo supervisorctl restart pizda
