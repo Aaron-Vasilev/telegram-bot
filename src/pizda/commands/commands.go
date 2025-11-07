@@ -17,15 +17,15 @@ func Start(bot *bot.Bot, u t.Update) {
 		user = *u.Message.From
 	}
 
-	bot.SendMessage(
-		common.GenerateKeyboardMsg(
-			user.ID,
-			cnst.SaleKeyboard,
-			"⬇️ Внизу, для удобства, есть клавиатура",
-		),
-	)
-
-	if u.Message == nil || u.Message.Text == "/start" {
+	if u.Message == nil {
+		bot.SendMessage(
+			common.GenerateKeyboardMsg(
+				user.ID,
+				cnst.SaleKeyboard,
+				"⬇️ Внизу, для удобства, есть клавиатура",
+			),
+		)
+	} else if u.Message.Text == "/start" {
 		// 		payments, err := db.Query.IfUserPays(bot.Ctx, user.ID)
 
 		// 		if err != nil {
@@ -48,12 +48,12 @@ func Start(bot *bot.Bot, u t.Update) {
 				},
 			},
 		})
-
-		db.Query.UpsertUser(bot.Ctx, db.UpsertUserParams{
-			ID:        user.ID,
-			FirstName: user.FirstName,
-			LastName:  user.LastName,
-			Username:  user.UserName,
-		})
 	}
+
+	db.Query.UpsertUser(bot.Ctx, db.UpsertUserParams{
+		ID:        user.ID,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Username:  user.UserName,
+	})
 }

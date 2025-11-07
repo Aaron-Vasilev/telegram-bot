@@ -20,11 +20,11 @@ var (
 	weakEmojis   = []string{"🤕", "🥀", "𓀗", "🥴", "🤒", "💀", "💔", "🥺", "👎🏻", "😔", "🫠", "🗿", "💩", "🐌", "🩸", "🍆🍑😩👉👌💦", "👶🏿", "🌡️", "💔😢😭", "🤮", "👴🏻", "🦠", "🥶", "🚽", "🙅🏿‍♀️", "🪨"}
 )
 
-func LoadEnv(path string) {
+func LoadEnv() {
 	env := os.Getenv("ENV")
 
 	if env == "" {
-		err := godotenv.Load(path)
+		err := godotenv.Load()
 
 		if err != nil {
 			log.Fatal("No .env")
