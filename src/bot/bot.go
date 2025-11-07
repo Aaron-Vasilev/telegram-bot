@@ -127,6 +127,10 @@ func (bot *Bot) SendPhotoById(chatId int64, fileId string) {
 	Send(bot, "/sendPhoto", msg)
 }
 
+func (bot *Bot) SendPhoto(msg t.Message) {
+	Send(bot, "/sendPhoto", msg)
+}
+
 func (bot *Bot) SendVideoById(msg t.Message) {
 	Send(bot, "/sendVideo", msg)
 }
