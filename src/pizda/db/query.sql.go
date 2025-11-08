@@ -116,34 +116,21 @@ func (q *Queries) GetUsersIDs(ctx context.Context) ([]int64, error) {
 	return items, nil
 }
 
-const ifUserPays = `-- name: IfUserPays :many
-SELECT id, user_id, method, creation_date, period FROM pizda.payment WHERE user_id = $1 and period @> NOW()
+const getValidPayment = `-- name: GetValidPayment :one
+SELECT id, user_id, method, creation_date, period FROM pizda.payment WHERE user_id = $1 and period @> NOW()::DATE limit 1
 `
 
-func (q *Queries) IfUserPays(ctx context.Context, userID int64) ([]PizdaPayment, error) {
-	rows, err := q.db.Query(ctx, ifUserPays, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []PizdaPayment
-	for rows.Next() {
-		var i PizdaPayment
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Method,
-			&i.CreationDate,
-			&i.Period,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetValidPayment(ctx context.Context, userID int64) (PizdaPayment, error) {
+	row := q.db.QueryRow(ctx, getValidPayment, userID)
+	var i PizdaPayment
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Method,
+		&i.CreationDate,
+		&i.Period,
+	)
+	return i, err
 }
 
 const upsertUser = `-- name: UpsertUser :exec

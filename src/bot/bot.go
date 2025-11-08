@@ -16,13 +16,13 @@ import (
 	"syscall"
 )
 
-// type commandCallback = func(bot *Bot, u t.Update)
+type commandCallback = func(bot *Bot, u t.Update)
 
-// type Command struct {
-// 	name string
-// 	description string
-// 	fn commandCallback
-// }
+type Command struct {
+	name        string
+	description string
+	fn          commandCallback
+}
 
 type Bot struct {
 	Token       string
@@ -33,7 +33,7 @@ type Bot struct {
 	Ctx         context.Context
 	WebhookPort string
 	// Commands    []Command
-	// Scenes      map[string]commandCallback
+	Scenes map[string]commandCallback
 }
 
 func NewBot(token string) *Bot {
@@ -63,6 +63,7 @@ func NewBot(token string) *Bot {
 		IsProd:      isProd,
 		WebhookPort: webhookPort,
 		Ctx:         ctx,
+		Scenes:      map[string]commandCallback{},
 	}
 }
 
@@ -240,11 +241,11 @@ func Call[T any](bot *Bot, method string) T {
 
 	if bot.IsDebug {
 		fmt.Printf("Method: %s\n", method)
-		bot, _ := json.MarshalIndent(resData.Result, "", "\t")
-		str := string(bot)
+		bytes, _ := json.MarshalIndent(resData.Result, "", "\t")
+		str := string(bytes)
 
 		if str != "[]" && str != "null" {
-			fmt.Println("Messages RECEIVED: ", str)
+			fmt.Println("Message RECEIVED: ", str)
 		}
 	}
 
@@ -462,26 +463,32 @@ func (bot *Bot) StartWebhook(handler func(bot *Bot, update t.Update)) {
 // 	Send(bot, "/setMyCommands", bot.Commands)
 // }
 
-// func (bot *Bot) RegisterScene(sceneName string, fn commandCallback) {
-// 	bot.Scenes[sceneName] = fn
-// }
+func (bot *Bot) RegisterScene(sceneName string, fn commandCallback) {
+	bot.Scenes[sceneName] = fn
+}
 
-// func (bot *Bot) HandleScene(u t.Update) {
-// 	sceneName := u.Message.Text
-// 	sceneCb, exist := bot.Scenes[sceneName]
+func (bot *Bot) HandleScene(u t.Update) {
+	sceneState, exist := bot.GetCtxValue(u.FromChat().ID)
+	sceneCb, exist := bot.Scenes[sceneState.Scene]
 
-// 	if exist {
-// 		sceneCb(bot, u)
-// 	} else {
-// 		bot.Error("Scene doesn't exist: " + sceneName)
-// 	}
-// }
+	if exist {
+		sceneCb(bot, u)
+	} else {
+		bot.EndCtx(u.FromChat().ID)
+		bot.Error("Scene doesn't exist: " + sceneState.Scene)
+	}
+}
 
-// func (bot *Bot) StartScene(u t.Update, sceneName string) {
-// 	bot.SetCtxValue(u.FromChat().ID, SceneState{
-// 		Scene: sceneName,
-// 		Stage: 1,
-// 	})
+func (bot *Bot) StartScene(u t.Update, sceneName string) {
+	bot.SetCtxValue(u.FromChat().ID, SceneState{
+		Scene: sceneName,
+		Stage: 1,
+	})
 
-// 	bot.Scenes[sceneName](bot, u)
-// }
+	bot.Scenes[sceneName](bot, u)
+}
+
+func (bot *Bot) IfTextScene(sceneName string) bool {
+	_, exist := bot.Scenes[sceneName]
+	return exist
+}

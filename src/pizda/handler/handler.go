@@ -10,8 +10,9 @@ import (
 	t "bot/src/utils/types"
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func handleCallbackQuery(bot *bot.Bot, u t.Update) {
@@ -62,7 +63,9 @@ func HandleUpdate(bot *bot.Bot, u t.Update) {
 		handleScene(bot, u)
 	} else if updateWithCallbackQuery {
 		handleCallbackQuery(bot, u)
-	} else if slices.Contains(cnst.SaleKeyboard, u.Message.Text) {
+	} else if bot.IfTextScene(u.Message.Text) {
+		bot.StartScene(u, u.Message.Text)
+	} else if slices.Contains(cnst.SaleKeyboard, u.Message.Text) || slices.Contains(cnst.PayKeyboard, u.Message.Text) {
 		handleKeyboard(bot, u)
 	} else if utils.IsAdmin(userId) {
 		handleAdminCmd(bot, u)
@@ -83,45 +86,62 @@ func handleMenu(bot *bot.Bot, u t.Update) {
 
 func handleKeyboard(bot *bot.Bot, u t.Update) {
 	key := u.Message.Text
+	userId := u.FromChat().ID
 
 	switch key {
 	case cnst.Whom:
-		sendToWhom(bot, u.FromChat().ID)
+		sendToWhom(bot, userId)
+		return
 	case cnst.Purchase:
 		purchase(bot, u.FromChat().ID)
+		return
 	case cnst.Programm:
 		sendProgramm(bot, u.FromChat().ID)
+		return
 	case cnst.TestTraining:
 		sendTestTraining(bot, u.FromChat().ID)
+		return
 	case cnst.Prices:
 		sendPrices(bot, u.FromChat().ID)
+		return
+	}
+
+	payment, err := db.Query.GetValidPayment(bot.Ctx, userId)
+
+	if err != nil {
+		bot.Error("p start error: " + err.Error())
+		return
+	}
+
+	if payment.UserID != userId {
+		bot.SendMessage(common.GenerateKeyboardMsg(u.Message.From.ID, cnst.SaleKeyboard, "Клавиатура пользователя"))
+	} else {
+		switch key {
+		case cnst.Subscription:
+			sendSubscription(bot, payment)
+		case cnst.Lessons:
+			sendLessons(bot, userId)
+		}
 	}
 }
 
-type sceneCallback = func(bot *bot.Bot, u t.Update)
+func sendSubscription(bot *bot.Bot, payment db.PizdaPayment) {
+	start, end := formatDateRange(payment.Period)
 
-var sceneMap = map[string]sceneCallback{
-	cnst.AssignSubscription: assignSubscription,
-}
-
-func Start(b *bot.Bot, u t.Update, scene string) {
-	b.SetCtxValue(u.FromChat().ID, bot.SceneState{
-		Scene: scene,
-		Stage: 1,
-	})
-
-	sceneMap[scene](b, u)
+	bot.SendHTML(
+		payment.UserID,
+		cnst.Subscription+"\nНачалась: <b>"+start+"</b>\nЗакончится: <b>"+end+"</b>",
+	)
 }
 
 func handleAdminCmd(bot *bot.Bot, u t.Update) {
 	if u.Message == nil {
 		return
 	}
-
 	cmd := u.Message.Text
-	if _, exist := sceneMap[cmd]; exist {
 
-		Start(bot, u, cmd)
+	if bot.IfTextScene(u.Message.Text) {
+		bot.StartScene(u, cmd)
 		return
 	}
 
@@ -138,138 +158,7 @@ func handleAdminCmd(bot *bot.Bot, u t.Update) {
 }
 
 func handleScene(bot *bot.Bot, u t.Update) {
-	state, _ := bot.GetCtxValue(u.FromChat().ID)
-
-	sceneMap[state.Scene](bot, u)
-}
-
-func assignSubscription(bot *bot.Bot, u t.Update) {
-	userId, _ := utils.UserIdFromUpdate(u)
-	state, ok := bot.GetCtxValue(userId)
-
-	if !ok {
-		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
-		bot.EndCtx(userId)
-	}
-
-	switch state.Stage {
-	case 1:
-		buttons := [][]t.InlineKeyboardButton{
-			{
-				{
-					Text:         "🇮🇱  Bit, Hapoalim",
-					CallbackData: string(db.PizdaPaymentMethodBIT),
-				},
-			},
-			{
-				{
-					Text:         "🇷🇺 Tinkoff",
-					CallbackData: string(db.PizdaPaymentMethodMIR),
-				},
-			},
-		}
-
-		bot.SendMessage(t.Message{
-			Text:   "Оплата была произведена по",
-			ChatId: userId,
-			ReplyMarkup: &t.InlineKeyboardMarkup{
-				InlineKeyboard: buttons,
-			},
-		})
-	case 2:
-		if u.CallbackQuery == nil {
-			bot.SendText(userId, utils.WrongMsg)
-			bot.EndCtx(userId)
-			return
-		}
-
-		state.Data = u.CallbackQuery.Data
-		bot.SetCtxValue(userId, state)
-
-		bot.SendMessage(t.Message{
-			ChatId:    userId,
-			Text:      "Пришил мне ник, фамилию или имя пользователя",
-			ParseMode: "html",
-		})
-	case 3:
-		if u.Message == nil {
-			bot.SendText(userId, utils.WrongMsg)
-			bot.EndCtx(userId)
-			return
-		}
-
-		shouldContinue := sendUserList(bot, userId, u.Message.Text)
-
-		if !shouldContinue {
-			return
-		}
-	case 4:
-		if u.Message == nil {
-			bot.SendText(userId, utils.WrongMsg)
-			bot.EndCtx(userId)
-			return
-		}
-
-		payerId, err := strconv.ParseInt(u.Message.Text, 10, 64)
-		var method db.PizdaPaymentMethod
-		ok := false
-		if str, isStr := state.Data.(string); isStr {
-			method = db.PizdaPaymentMethod(str)
-			ok = true
-		}
-
-		if err == nil && ok {
-			err := db.Query.AddPayment(bot.Ctx, db.AddPaymentParams{
-				UserID: payerId,
-				Method: method,
-			})
-
-			if err != nil {
-				bot.SendText(payerId, "Your membership was updated 🌋🧯")
-				bot.SendText(userId, "Успеx")
-			} else {
-				bot.SendText(userId, utils.WrongMsg)
-			}
-		} else {
-			bot.SendText(userId, "It's not an ID🔫")
-		}
-
-		bot.EndCtx(userId)
-		return
-	}
-
-	bot.NextCtx(userId)
-}
-
-func sendUserList(bot *bot.Bot, userID int64, search string) bool {
-	shouldContinue := true
-	textWithUsers := ""
-	users, err := db.Query.FindUsersByName(bot.Ctx, search)
-
-	if err != nil {
-		bot.Error("find users by name error:" + err.Error())
-	}
-
-	if len(users) == 0 {
-		bot.SendText(userID, "There are no users like: "+search)
-		bot.EndCtx(userID)
-
-		shouldContinue = false
-	} else {
-		for i := range users {
-			userName := ""
-
-			if users[i].Username != "" {
-				userName = "@" + users[i].Username
-			}
-			textWithUsers += fmt.Sprintf("%s %s %s ID = %d\n", users[i].FirstName, users[i].LastName, userName, users[i].ID)
-		}
-
-		bot.SendText(userID, textWithUsers)
-		bot.SendText(userID, "Send back the ID of the user")
-	}
-
-	return shouldContinue
+	bot.HandleScene(u)
 }
 
 func sendProgramm(bot *bot.Bot, userId int64) {
@@ -297,7 +186,7 @@ func sendProgramm(bot *bot.Bot, userId int64) {
 
 	bot.SendMediaGroup(t.Message{
 		ChatId: userId,
-		Media: media,
+		Media:  media,
 	})
 	bot.SendMessage(t.Message{
 		ChatId: userId,
@@ -383,14 +272,14 @@ func purchase(bot *bot.Bot, chatId int64) {
 
 func sendPrices(bot *bot.Bot, chatId int64) {
 	msg := t.Message{
-		ChatId:         chatId,
+		ChatId: chatId,
 		Media: []t.InputMediaPhoto{
 			{
 				BaseInputMedia: t.BaseInputMedia{
-					Type:    "photo",
-					Media:   "https://bot-telega.s3.il-central-1.amazonaws.com/pizda/plan_1.JPG",
-					Caption: "Цены и тарифы:\n1. \nБазовый - <b>300₪</b> или <b>7500₽</b>, включающий консультацию и поддержку в групповом чате2. Индивидуальный - <b>900₪</b> или <b>22500₽</b>, с личными практиками и ведением",
-					ParseMode:      "html",
+					Type:      "photo",
+					Media:     "https://bot-telega.s3.il-central-1.amazonaws.com/pizda/plan_1.JPG",
+					Caption:   "Цены и тарифы:\n1. \nБазовый - <b>300₪</b> или <b>7500₽</b>, включающий консультацию и поддержку в групповом чате2. Индивидуальный - <b>900₪</b> или <b>22500₽</b>, с личными практиками и ведением",
+					ParseMode: "html",
 				},
 			},
 			{
@@ -414,6 +303,17 @@ func sendPrices(bot *bot.Bot, chatId int64) {
 					},
 				},
 			},
-		},
-	})
+		}})
+}
+
+func formatDateRange(r pgtype.Range[pgtype.Date]) (string, string) {
+	formatDate := func(d pgtype.Date) string {
+		return d.Time.Format("02-01-06")
+	}
+
+	return formatDate(r.Lower), formatDate(r.Upper)
+}
+
+func sendLessons(bot *bot.Bot, chatId int64) {
+
 }

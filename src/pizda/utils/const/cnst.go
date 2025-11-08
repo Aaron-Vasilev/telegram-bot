@@ -9,7 +9,12 @@ const (
 	Prices       = "Цены и тарифы 🏷️"
 
 	// Pay keyboard
+	Lessons      = "Уроки 📚"
+	Subscription = "Подписка 🎟️"
+
+	// Admin keyboard
 	AssignSubscription = "Ученик оплатил 💳"
+	ForwardAll         = "Переслать всем сообщение"
 )
 
 var (
@@ -20,7 +25,12 @@ var (
 		Prices,
 		Purchase,
 	}
+	PayKeyboard = []string{
+		Lessons,
+		Subscription,
+	}
 	AdminKeyboard = []string{
 		AssignSubscription,
+		ForwardAll,
 	}
 )
