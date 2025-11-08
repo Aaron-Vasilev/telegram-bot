@@ -133,12 +133,12 @@ func (q *Queries) GetValidPayment(ctx context.Context, userID int64) (PizdaPayme
 	return i, err
 }
 
-const getVideoByName = `-- name: GetVideoByName :one
-SELECT id, file_id, name FROM pizda.file WHERE name=$1
+const getVideoById = `-- name: GetVideoById :one
+SELECT id, file_id, name FROM pizda.file WHERE id=$1
 `
 
-func (q *Queries) GetVideoByName(ctx context.Context, name string) (PizdaFile, error) {
-	row := q.db.QueryRow(ctx, getVideoByName, name)
+func (q *Queries) GetVideoById(ctx context.Context, id int32) (PizdaFile, error) {
+	row := q.db.QueryRow(ctx, getVideoById, id)
 	var i PizdaFile
 	err := row.Scan(&i.ID, &i.FileID, &i.Name)
 	return i, err
@@ -166,6 +166,20 @@ func (q *Queries) GetVideos(ctx context.Context) ([]PizdaFile, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateFileId = `-- name: UpdateFileId :exec
+UPDATE pizda.file SET file_id=$1 WHERE id=$2
+`
+
+type UpdateFileIdParams struct {
+	FileID string
+	ID     int32
+}
+
+func (q *Queries) UpdateFileId(ctx context.Context, arg UpdateFileIdParams) error {
+	_, err := q.db.Exec(ctx, updateFileId, arg.FileID, arg.ID)
+	return err
 }
 
 const upsertUser = `-- name: UpsertUser :exec

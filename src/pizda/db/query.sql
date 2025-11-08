@@ -27,5 +27,8 @@ INSERT INTO pizda.payment (user_id, method) VALUES ($1, $2);
 -- name: GetVideos :many
 SELECT * FROM pizda.file order by id;
 
--- name: GetVideoByName :one
-SELECT * FROM pizda.file WHERE name=$1;
+-- name: GetVideoById :one
+SELECT * FROM pizda.file WHERE id=$1;
+
+-- name: UpdateFileId :exec
+UPDATE pizda.file SET file_id=$1 WHERE id=$2;

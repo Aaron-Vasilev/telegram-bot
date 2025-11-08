@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -49,7 +50,7 @@ func handleCallbackQuery(bot *bot.Bot, u t.Update) {
 		purchase(bot, u.FromChat().ID)
 	} else if text == cnst.Prices {
 		sendPrices(bot, u.FromChat().ID)
-	} else if text == cnst.Video {
+	} else if strings.HasPrefix(text, cnst.Video) {
 		sendVideo(bot, u)
 	}
 }
@@ -144,6 +145,24 @@ func handleAdminCmd(bot *bot.Bot, u t.Update) {
 		return
 	}
 	cmd := u.Message.Text
+
+	if strings.HasPrefix(cmd, "UPDATE") {
+		data := strings.Split(cmd, ",")
+
+		id, err := strconv.Atoi(data[1])
+
+		if err == nil {
+			db.Query.UpdateFileId(bot.Ctx, db.UpdateFileIdParams{
+				ID: int32(id),
+				FileID: data[2],
+			})
+			bot.SendText(u.FromChat().ID, "Sus")
+		} else {
+			bot.Error(err.Error())
+		}
+
+		return
+	}
 
 	if bot.IfTextScene(u.Message.Text) {
 		bot.StartScene(u, cmd)
@@ -343,7 +362,7 @@ func sendLessons(bot *bot.Bot, chatId int64) {
 			key := []t.InlineKeyboardButton{
 				{
 					Text:         v.Name,
-					CallbackData: cnst.Video,
+					CallbackData: fmt.Sprintf("%s_%d", cnst.Video, v.ID),
 				},
 			}
 			keys.InlineKeyboard = append(keys.InlineKeyboard, key)
@@ -364,19 +383,16 @@ func sendVideo(bot *bot.Bot, u t.Update) {
 	if !isUserPays {
 		bot.SendMessage(common.GenerateKeyboardMsg(userId, cnst.SaleKeyboard, "Клавиатура пользователя"))
 	} else {
-		markup, err := inlineKeyboardFromReplyMarkup(u.CallbackQuery.Message.ReplyMarkup)
+		data := strings.Split(u.CallbackQuery.Data, "_")
+		videoId, err := strconv.ParseInt(data[1], 10, 32)
+
 		if err != nil {
-			bot.Error("sendVideo reply markup decode error: " + err.Error())
+			bot.SendText(userId, cnst.ErrorMsg)
+			bot.Error("sendVideo pars error: " + err.Error())
 			return
 		}
 
-		if markup == nil || len(markup.InlineKeyboard) == 0 || len(markup.InlineKeyboard[0]) == 0 {
-			bot.Error("sendVideo reply markup is empty")
-			return
-		}
-
-		videoName := markup.InlineKeyboard[0][0].Text
-		video, err := db.Query.GetVideoByName(bot.Ctx, videoName)
+		video, err := db.Query.GetVideoById(bot.Ctx, int32(videoId))
 
 		if err != nil {
 			bot.Error("sendVideo error: " + err.Error())
@@ -391,34 +407,6 @@ func sendVideo(bot *bot.Bot, u t.Update) {
 				IsString: true,
 			},
 		})
-	}
-}
-
-func inlineKeyboardFromReplyMarkup(markup interface{}) (*t.InlineKeyboardMarkup, error) {
-	if markup == nil {
-		return nil, nil
-	}
-
-	switch v := markup.(type) {
-	case *t.InlineKeyboardMarkup:
-		return v, nil
-	case t.InlineKeyboardMarkup:
-		return &v, nil
-	case map[string]interface{}:
-		bytes, err := json.Marshal(v)
-		if err != nil {
-			return nil, err
-		}
-
-		var inlineMarkup t.InlineKeyboardMarkup
-
-		if err := json.Unmarshal(bytes, &inlineMarkup); err != nil {
-			return nil, err
-		}
-
-		return &inlineMarkup, nil
-	default:
-		return nil, fmt.Errorf("unexpected reply markup type %T", markup)
 	}
 }
 
