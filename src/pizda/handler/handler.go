@@ -8,7 +8,9 @@ import (
 	cnst "bot/src/pizda/utils/const"
 	"bot/src/utils"
 	t "bot/src/utils/types"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -112,19 +114,19 @@ func handleKeyboard(bot *bot.Bot, u t.Update) {
 	payment, err := db.Query.GetValidPayment(bot.Ctx, userId)
 
 	if err != nil {
-		bot.Error("p start error: " + err.Error())
+		if errors.Is(err, sql.ErrNoRows) {
+			bot.SendMessage(common.GenerateKeyboardMsg(u.Message.From.ID, cnst.SaleKeyboard, "Клавиатура пользователя"))
+		} else {
+			bot.Error("is paying user error: " + err.Error())
+		}
 		return
 	}
 
-	if payment.UserID != userId {
-		bot.SendMessage(common.GenerateKeyboardMsg(u.Message.From.ID, cnst.SaleKeyboard, "Клавиатура пользователя"))
-	} else {
-		switch key {
-		case cnst.Subscription:
-			sendSubscription(bot, payment)
-		case cnst.Lessons:
-			sendLessons(bot, userId)
-		}
+	switch key {
+	case cnst.Subscription:
+		sendSubscription(bot, payment)
+	case cnst.Lessons:
+		sendLessons(bot, userId)
 	}
 }
 
@@ -327,7 +329,7 @@ func sendLessons(bot *bot.Bot, chatId int64) {
 	videos, err := db.Query.GetVideos(bot.Ctx)
 
 	if err != nil {
-		bot.SendText(chatId, "Что-по пошло не так, уже чиним 🛠️")
+		bot.SendText(chatId, cnst.ErrorMsg)
 		bot.Error(fmt.Sprintf("User: %d %s", chatId, err.Error()))
 		return
 	}
@@ -422,9 +424,12 @@ func isPayingUser(bot *bot.Bot, userId int64) (bool, db.PizdaPayment) {
 	payment, err := db.Query.GetValidPayment(bot.Ctx, userId)
 
 	if err != nil {
-		bot.Error("p start error: " + err.Error())
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, payment
+		}
+		bot.Error("is paying user error: " + err.Error())
 		return false, payment
 	}
 
-	return payment.UserID == userId, payment
+	return true, payment
 }

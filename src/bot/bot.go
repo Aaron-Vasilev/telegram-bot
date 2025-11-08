@@ -215,10 +215,6 @@ func Call[T any](bot *Bot, method string) T {
 	var resData t.Response[T]
 	res, err := http.Get("https://api.telegram.org/bot" + bot.Token + method)
 
-	if bot.IsDebug {
-		fmt.Printf("Method: %s\n", method)
-	}
-
 	if err != nil {
 		bot.Error("Error making the request: " + err.Error())
 	}
@@ -240,7 +236,6 @@ func Call[T any](bot *Bot, method string) T {
 	}
 
 	if bot.IsDebug {
-		fmt.Printf("Method: %s\n", method)
 		bytes, _ := json.MarshalIndent(resData.Result, "", "\t")
 		str := string(bytes)
 

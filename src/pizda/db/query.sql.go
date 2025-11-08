@@ -145,7 +145,7 @@ func (q *Queries) GetVideoByName(ctx context.Context, name string) (PizdaFile, e
 }
 
 const getVideos = `-- name: GetVideos :many
-SELECT id, file_id, name FROM pizda.file
+SELECT id, file_id, name FROM pizda.file order by id
 `
 
 func (q *Queries) GetVideos(ctx context.Context) ([]PizdaFile, error) {

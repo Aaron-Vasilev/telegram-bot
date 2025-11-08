@@ -25,7 +25,7 @@ SELECT * FROM pizda.payment WHERE user_id = $1 and period @> NOW()::DATE limit 1
 INSERT INTO pizda.payment (user_id, method) VALUES ($1, $2);
 
 -- name: GetVideos :many
-SELECT * FROM pizda.file;
+SELECT * FROM pizda.file order by id;
 
 -- name: GetVideoByName :one
 SELECT * FROM pizda.file WHERE name=$1;
