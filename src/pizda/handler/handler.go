@@ -339,13 +339,15 @@ func sendLessons(bot *bot.Bot, chatId int64) {
 	}
 
 	for _, v := range videos {
-		key := []t.InlineKeyboardButton{
-			{
-				Text:         v.Name,
-				CallbackData: cnst.Video,
-			},
+		if v.FileID != "" {
+			key := []t.InlineKeyboardButton{
+				{
+					Text:         v.Name,
+					CallbackData: cnst.Video,
+				},
+			}
+			keys.InlineKeyboard = append(keys.InlineKeyboard, key)
 		}
-		keys.InlineKeyboard = append(keys.InlineKeyboard, key)
 	}
 
 	bot.SendMessage(t.Message{
