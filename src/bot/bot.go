@@ -390,6 +390,8 @@ func webhookHandler(bot *Bot, handleUpdate func(bot *Bot, update t.Update)) http
 			}()
 
 			handleUpdate(bot, update)
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"status":"ok"}`))
 		}()
 
 		w.WriteHeader(http.StatusOK)
