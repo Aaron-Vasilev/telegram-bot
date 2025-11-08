@@ -365,20 +365,17 @@ func (bot *Bot) StartLongPulling(handler func(bot *Bot, updates []t.Update)) {
 func webhookHandler(bot *Bot, handleUpdate func(bot *Bot, update t.Update)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
 
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status":"ok"}`))
 			return
 		}
 
 		var update t.Update
 		if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 			bot.Error(fmt.Sprintf("Failed to decode webhook update: %v", err))
-
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status":"ok"}`))
 			return
 		}
 
@@ -390,12 +387,7 @@ func webhookHandler(bot *Bot, handleUpdate func(bot *Bot, update t.Update)) http
 			}()
 
 			handleUpdate(bot, update)
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status":"ok"}`))
 		}()
-
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
 	}
 }
 
