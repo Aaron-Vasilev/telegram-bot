@@ -15,6 +15,8 @@ const (
 	// Admin keyboard
 	AssignSubscription = "Ученик оплатил 💳"
 	ForwardAll         = "Переслать всем сообщение"
+
+	Video = "VIDEO"
 )
 
 var (

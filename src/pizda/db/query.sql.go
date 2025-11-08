@@ -133,6 +133,41 @@ func (q *Queries) GetValidPayment(ctx context.Context, userID int64) (PizdaPayme
 	return i, err
 }
 
+const getVideoByName = `-- name: GetVideoByName :one
+SELECT id, file_id, name FROM pizda.file WHERE name=$1
+`
+
+func (q *Queries) GetVideoByName(ctx context.Context, name string) (PizdaFile, error) {
+	row := q.db.QueryRow(ctx, getVideoByName, name)
+	var i PizdaFile
+	err := row.Scan(&i.ID, &i.FileID, &i.Name)
+	return i, err
+}
+
+const getVideos = `-- name: GetVideos :many
+SELECT id, file_id, name FROM pizda.file
+`
+
+func (q *Queries) GetVideos(ctx context.Context) ([]PizdaFile, error) {
+	rows, err := q.db.Query(ctx, getVideos)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PizdaFile
+	for rows.Next() {
+		var i PizdaFile
+		if err := rows.Scan(&i.ID, &i.FileID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertUser = `-- name: UpsertUser :exec
 INSERT INTO pizda.user (id, username, first_name, last_name) VALUES ($1, $2, $3, $4)
   ON CONFLICT(id) DO UPDATE SET

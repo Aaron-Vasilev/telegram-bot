@@ -55,6 +55,12 @@ func (ns NullPizdaPaymentMethod) Value() (driver.Value, error) {
 	return string(ns.PizdaPaymentMethod), nil
 }
 
+type PizdaFile struct {
+	ID     int32
+	FileID string
+	Name   string
+}
+
 type PizdaPayment struct {
 	ID           int32
 	UserID       int64

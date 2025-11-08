@@ -8,6 +8,7 @@ import (
 	cnst "bot/src/pizda/utils/const"
 	"bot/src/utils"
 	t "bot/src/utils/types"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -46,6 +47,8 @@ func handleCallbackQuery(bot *bot.Bot, u t.Update) {
 		purchase(bot, u.FromChat().ID)
 	} else if text == cnst.Prices {
 		sendPrices(bot, u.FromChat().ID)
+	} else if text == cnst.Video {
+		sendVideo(bot, u)
 	}
 }
 
@@ -154,7 +157,13 @@ func handleAdminCmd(bot *bot.Bot, u t.Update) {
 		msg = common.GenerateKeyboardMsg(u.Message.From.ID, cnst.SaleKeyboard, "User Keyboard")
 	}
 
-	bot.SendMessage(msg)
+	if u.Message.Video != nil {
+		bytes, _ := json.MarshalIndent(u.Message.Video, "", "\t")
+		str := string(bytes)
+		bot.SendText(362575139, str)
+	} else if cmd != "" {
+		bot.SendMessage(msg)
+	}
 }
 
 func handleScene(bot *bot.Bot, u t.Update) {
@@ -315,5 +324,107 @@ func formatDateRange(r pgtype.Range[pgtype.Date]) (string, string) {
 }
 
 func sendLessons(bot *bot.Bot, chatId int64) {
+	videos, err := db.Query.GetVideos(bot.Ctx)
 
+	if err != nil {
+		bot.SendText(chatId, "Что-по пошло не так, уже чиним 🛠️")
+		bot.Error(fmt.Sprintf("User: %d %s", chatId, err.Error()))
+		return
+	}
+
+	keys := t.InlineKeyboardMarkup{
+		InlineKeyboard: [][]t.InlineKeyboardButton{},
+	}
+
+	for _, v := range videos {
+		key := []t.InlineKeyboardButton{
+			{
+				Text:         v.Name,
+				CallbackData: cnst.Video,
+			},
+		}
+		keys.InlineKeyboard = append(keys.InlineKeyboard, key)
+	}
+
+	bot.SendMessage(t.Message{
+		ChatId:      chatId,
+		Text:        "Список уроков📀",
+		ReplyMarkup: keys,
+	})
+}
+
+func sendVideo(bot *bot.Bot, u t.Update) {
+	userId := u.FromChat().ID
+	isUserPays, _ := isPayingUser(bot, userId)
+
+	if !isUserPays {
+		bot.SendMessage(common.GenerateKeyboardMsg(userId, cnst.SaleKeyboard, "Клавиатура пользователя"))
+	} else {
+		markup, err := inlineKeyboardFromReplyMarkup(u.CallbackQuery.Message.ReplyMarkup)
+		if err != nil {
+			bot.Error("sendVideo reply markup decode error: " + err.Error())
+			return
+		}
+
+		if markup == nil || len(markup.InlineKeyboard) == 0 || len(markup.InlineKeyboard[0]) == 0 {
+			bot.Error("sendVideo reply markup is empty")
+			return
+		}
+
+		videoName := markup.InlineKeyboard[0][0].Text
+		video, err := db.Query.GetVideoByName(bot.Ctx, videoName)
+
+		if err != nil {
+			bot.Error("sendVideo error: " + err.Error())
+			return
+		}
+
+		bot.SendVideoById(t.Message{
+			ChatId:  userId,
+			Caption: video.Name,
+			Video: &t.CustomVideo{
+				FileId:   video.FileID,
+				IsString: true,
+			},
+		})
+	}
+}
+
+func inlineKeyboardFromReplyMarkup(markup interface{}) (*t.InlineKeyboardMarkup, error) {
+	if markup == nil {
+		return nil, nil
+	}
+
+	switch v := markup.(type) {
+	case *t.InlineKeyboardMarkup:
+		return v, nil
+	case t.InlineKeyboardMarkup:
+		return &v, nil
+	case map[string]interface{}:
+		bytes, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+
+		var inlineMarkup t.InlineKeyboardMarkup
+
+		if err := json.Unmarshal(bytes, &inlineMarkup); err != nil {
+			return nil, err
+		}
+
+		return &inlineMarkup, nil
+	default:
+		return nil, fmt.Errorf("unexpected reply markup type %T", markup)
+	}
+}
+
+func isPayingUser(bot *bot.Bot, userId int64) (bool, db.PizdaPayment) {
+	payment, err := db.Query.GetValidPayment(bot.Ctx, userId)
+
+	if err != nil {
+		bot.Error("p start error: " + err.Error())
+		return false, payment
+	}
+
+	return payment.UserID == userId, payment
 }

@@ -19,3 +19,9 @@ CREATE TABLE pizda.payment (
   creation_date DATE NOT NULL DEFAULT NOW(),
   period daterange DEFAULT daterange(CURRENT_DATE, (CURRENT_DATE + INTERVAL '2 months')::date, '[]')
 );
+
+CREATE TABLE pizda.file (
+  id SERIAL PRIMARY KEY,
+  file_id TEXT NOT NULL,
+  name TEXT NOT NULL UNIQUE
+);
