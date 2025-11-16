@@ -60,24 +60,16 @@ func SignStudents(bot *bot.Bot, u t.Update) {
 			bot.Error("get avaliable lessons error: " + err.Error())
 		}
 
-		msg := utils.GenerateTimetableMsg(lessons, false)
+		msg := utils.GenerateTimetableMsg(lessons, true)
 		msg.ChatId = userId
-		msg.Text = "Which lesson are you interested in?"
+		msg.Text = "Send back the <b>ID</b> of the lesson you want to sign students for"
+		msg.ParseMode = "html"
 		bot.SendMessage(msg)
 	case 2:
-		data := u.CallbackData()
-
-		if data == "" {
-			bot.SendText(userId, "You need to click on the lesson👺")
-			bot.EndCtx(userId)
-			return
-		}
-
-		lessonAndId := strings.Split(data, "=")
-		lessonId, err := strconv.Atoi(lessonAndId[1])
+		lessonId, err := strconv.Atoi(u.Message.Text)
 
 		if err != nil {
-			bot.SendText(userId, "The ID is not correct")
+			bot.SendText(userId, utils.NotANumberMsg)
 			bot.EndCtx(userId)
 			return
 		}
@@ -147,12 +139,11 @@ func SignStudents(bot *bot.Bot, u t.Update) {
 		userWithMem, err := db.Query.GetUserWithMembership(bot.Ctx, userIds[currIndex])
 
 		if err != nil {
-			bot.SendText(userId, utils.NotANumberMsg)
+			bot.SendText(userId, "Internal error. Text anything to continue")
 			bot.Error("Sign students get user with membership err: " + err.Error())
-			bot.EndCtx(userId)
-			return
+		} else {
+			bot.SendHTML(userId, utils.UserMemText(userWithMem))
 		}
-		bot.SendHTML(userId, utils.UserMemText(userWithMem))
 
 		data.Index = currIndex
 		state.Data = data
