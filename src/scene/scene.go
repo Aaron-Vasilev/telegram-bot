@@ -66,6 +66,11 @@ func SignStudents(bot *bot.Bot, u t.Update) {
 		msg.ParseMode = "html"
 		bot.SendMessage(msg)
 	case 2:
+		if u.Message == nil {
+			bot.SendHTML(userId, "You must send an <b>ID</b>")
+			bot.EndCtx(userId)
+			return
+		}
 		lessonId, err := strconv.Atoi(u.Message.Text)
 
 		if err != nil {
