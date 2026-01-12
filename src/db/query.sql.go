@@ -28,16 +28,16 @@ func (q *Queries) AddAttendance(ctx context.Context, arg AddAttendanceParams) er
 }
 
 const addDaysToMem = `-- name: AddDaysToMem :exec
-UPDATE yoga.membership SET ends = ends + $1 * INTERVAL '1 days' WHERE user_id=$2
+UPDATE yoga.membership SET ends = ends + $1 * INTERVAL '1 days' WHERE user_id = ANY($2::bigint[])
 `
 
 type AddDaysToMemParams struct {
 	Column1 interface{}
-	UserID  int64
+	UserIds []int64
 }
 
 func (q *Queries) AddDaysToMem(ctx context.Context, arg AddDaysToMemParams) error {
-	_, err := q.db.Exec(ctx, addDaysToMem, arg.Column1, arg.UserID)
+	_, err := q.db.Exec(ctx, addDaysToMem, arg.Column1, arg.UserIds)
 	return err
 }
 
@@ -536,6 +536,51 @@ func (q *Queries) GetUsersIDsWithValidMem(ctx context.Context) ([]int64, error) 
 			return nil, err
 		}
 		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUsersWithMembership = `-- name: GetUsersWithMembership :many
+SELECT u.id, username, name, emoji, starts, ends, type, lessons_avaliable
+FROM yoga.user u LEFT JOIN yoga.membership m ON u.id = m.user_id WHERE u.id = ANY($1::bigint[])
+`
+
+type GetUsersWithMembershipRow struct {
+	ID               int64
+	Username         pgtype.Text
+	Name             string
+	Emoji            string
+	Starts           pgtype.Date
+	Ends             pgtype.Date
+	Type             pgtype.Int4
+	LessonsAvaliable pgtype.Int4
+}
+
+func (q *Queries) GetUsersWithMembership(ctx context.Context, userIds []int64) ([]GetUsersWithMembershipRow, error) {
+	rows, err := q.db.Query(ctx, getUsersWithMembership, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUsersWithMembershipRow
+	for rows.Next() {
+		var i GetUsersWithMembershipRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.Name,
+			&i.Emoji,
+			&i.Starts,
+			&i.Ends,
+			&i.Type,
+			&i.LessonsAvaliable,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

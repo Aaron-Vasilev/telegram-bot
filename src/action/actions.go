@@ -69,6 +69,10 @@ func SendProfile(bot *bot.Bot, chatId int64) {
 		return
 	}
 
+	SendProfileByMem(bot, chatId, userWithMem)
+}
+
+func SendProfileByMem(bot *bot.Bot, chatId int64, userWithMem db.GetUserWithMembershipRow) {
 	buttons := [][]t.InlineKeyboardButton{
 		{
 			{

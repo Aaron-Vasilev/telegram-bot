@@ -16,6 +16,10 @@ INSERT INTO yoga.user (id, username, name) VALUES ($1, $2, $3)
 SELECT u.id, username, name, emoji, starts, ends, type, lessons_avaliable
 FROM yoga.user u LEFT JOIN yoga.membership m ON u.id = m.user_id WHERE u.id=$1;
 
+-- name: GetUsersWithMembership :many
+SELECT u.id, username, name, emoji, starts, ends, type, lessons_avaliable
+FROM yoga.user u LEFT JOIN yoga.membership m ON u.id = m.user_id WHERE u.id = ANY(sqlc.arg(user_ids)::bigint[]);
+
 -- name: GetAllUsersWithMemLatest :many
 SELECT u.id, username, name, emoji, starts, ends, type, lessons_avaliable
 FROM yoga.user u INNER JOIN yoga.membership m ON u.id = m.user_id 
@@ -99,7 +103,7 @@ GROUP BY u.id, username, name, emoji ORDER BY count DESC;
 INSERT INTO yoga.attendance (user_id, lesson_id, date) VALUES ($1, $2, $3);
 
 -- name: AddDaysToMem :exec
-UPDATE yoga.membership SET ends = ends + $1 * INTERVAL '1 days' WHERE user_id=$2;
+UPDATE yoga.membership SET ends = ends + $1 * INTERVAL '1 days' WHERE user_id = ANY(sqlc.arg(user_ids)::bigint[]);
 
 -- name: GetUsersIDsWithValidMem :many
 SELECT user_id FROM yoga.membership m WHERE m.ends > NOW();

@@ -541,20 +541,53 @@ func FreezeMembership(bot *bot.Bot, u t.Update) {
 				ids = []int64{data.UserId}
 			}
 
+			oldUsersWithMem, err := db.Query.GetUsersWithMembership(bot.Ctx, ids)
+			if err != nil {
+				bot.EndCtx(userId)
+				bot.Error("Get users with membership error: " + err.Error())
+				bot.SendText(userId, "Error: "+err.Error())
+				return
+			}
+
+			err = db.Query.AddDaysToMem(bot.Ctx, db.AddDaysToMemParams{
+				Column1: data.Days,
+				UserIds: ids,
+			})
+			if err != nil {
+				bot.EndCtx(userId)
+				bot.Error("Add days to mem error: " + err.Error())
+				bot.SendText(userId, "Error: "+err.Error())
+				return
+			}
+
+			newUsersWithMem, err := db.Query.GetUsersWithMembership(bot.Ctx, ids)
+			if err != nil {
+				bot.EndCtx(userId)
+				bot.Error("Get users with membership error: " + err.Error())
+				bot.SendText(userId, "Error: "+err.Error())
+				return
+			}
+
+			oldMemMap := make(map[int64]db.GetUserWithMembershipRow)
+			for _, mem := range oldUsersWithMem {
+				oldMemMap[mem.ID] = utils.ConvertToUserWithMembership(mem)
+			}
+
+			newMemMap := make(map[int64]db.GetUserWithMembershipRow)
+			for _, mem := range newUsersWithMem {
+				newMemMap[mem.ID] = utils.ConvertToUserWithMembership(mem)
+			}
+
 			for i := range ids {
 				wg.Add(1)
 
-				go func() {
+				go func(userID int64) {
 					defer wg.Done()
-					bot.SendHTML(ids[i], utils.NoClassesMsg)
-					action.SendProfile(bot, ids[i])
-					db.Query.AddDaysToMem(bot.Ctx, db.AddDaysToMemParams{
-						Column1: data.Days,
-						UserID:  ids[i],
-					})
-					bot.SendText(ids[i], utils.UpdatedMembershipMsg)
-					action.SendProfile(bot, ids[i])
-				}()
+					bot.SendHTML(userID, utils.NoClassesMsg)
+					action.SendProfileByMem(bot, userID, oldMemMap[userID])
+					bot.SendText(userID, utils.UpdatedMembershipMsg)
+					action.SendProfileByMem(bot, userID, newMemMap[userID])
+				}(ids[i])
 			}
 			wg.Wait()
 		}

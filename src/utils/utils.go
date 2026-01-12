@@ -400,3 +400,17 @@ func ViolettaId() (int64, error) {
 
 	return strconv.ParseInt(admins[1], 10, 64)
 }
+
+func ConvertToUserWithMembership(u db.GetUsersWithMembershipRow) db.GetUserWithMembershipRow {
+	return db.GetUserWithMembershipRow{
+		ID:               u.ID,
+		Username:         u.Username,
+		Name:             u.Name,
+		Emoji:            u.Emoji,
+		Starts:           u.Starts,
+		Ends:             u.Ends,
+		Type:             u.Type,
+		LessonsAvaliable: u.LessonsAvaliable,
+	}
+}
+
