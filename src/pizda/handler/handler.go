@@ -46,7 +46,7 @@ func handleCallbackQuery(bot *bot.Bot, u t.Update) {
 		sendProgramm(bot, u.FromChat().ID)
 	} else if text == cnst.Whom {
 		sendToWhom(bot, u.FromChat().ID)
-	} else if text == cnst.Purchase {
+	} else if text == cnst.Purchase || text == cnst.ExtendPayment {
 		purchase(bot, u.FromChat().ID)
 	} else if text == cnst.Prices {
 		sendPrices(bot, u.FromChat().ID)

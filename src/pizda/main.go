@@ -2,6 +2,7 @@ package main
 
 import (
 	"bot/src/bot"
+	"bot/src/pizda/cron"
 	"bot/src/pizda/db"
 	"bot/src/pizda/handler"
 	"bot/src/pizda/scene"
@@ -19,6 +20,7 @@ func main() {
 	connection := db.ConnectDB(bot)
 	defer connection.Close(bot.Ctx)
 	scene.RegisterScenes(bot)
+	cron.Cron(bot)
 
 	fmt.Println("Started!")
 	if bot.IsProd {

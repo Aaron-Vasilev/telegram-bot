@@ -67,6 +67,7 @@ type PizdaPayment struct {
 	Method       PizdaPaymentMethod
 	CreationDate time.Time
 	Period       pgtype.Range[pgtype.Date]
+	IsNotified   pgtype.Bool
 }
 
 type PizdaUser struct {

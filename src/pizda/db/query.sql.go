@@ -7,6 +7,9 @@ package db
 
 import (
 	"context"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addPayment = `-- name: AddPayment :exec
@@ -32,6 +35,17 @@ func (q *Queries) BlockUsers(ctx context.Context, ids []int64) error {
 	return err
 }
 
+const extendPaymentByMonth = `-- name: ExtendPaymentByMonth :exec
+UPDATE pizda.payment
+SET period = daterange(lower(period), (upper(period) + INTERVAL '1 month')::date, '[]')
+WHERE id = $1
+`
+
+func (q *Queries) ExtendPaymentByMonth(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, extendPaymentByMonth, id)
+	return err
+}
+
 const findUsersByName = `-- name: FindUsersByName :many
 SELECT id, username, first_name, last_name, is_blocked FROM pizda.user WHERE first_name ILIKE '%' || $1::text || '%' OR last_name ILIKE '%' || $1::text || '%' OR username ILIKE '%' || $1::text || '%'
 `
@@ -51,6 +65,57 @@ func (q *Queries) FindUsersByName(ctx context.Context, name string) ([]PizdaUser
 			&i.FirstName,
 			&i.LastName,
 			&i.IsBlocked,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPaymentsEndingSoon = `-- name: GetPaymentsEndingSoon :many
+SELECT p.id, p.user_id, p.method, p.creation_date, p.period, p.is_notified, u.id as user_id, u.first_name, u.username
+FROM pizda.payment p
+JOIN pizda.user u ON p.user_id = u.id
+WHERE upper(p.period) - CURRENT_DATE <= 3
+  AND upper(p.period) - CURRENT_DATE >= 0
+  AND p.is_notified = false
+`
+
+type GetPaymentsEndingSoonRow struct {
+	ID           int32
+	UserID       int64
+	Method       PizdaPaymentMethod
+	CreationDate time.Time
+	Period       pgtype.Range[pgtype.Date]
+	IsNotified   pgtype.Bool
+	UserID_2     int64
+	FirstName    string
+	Username     string
+}
+
+func (q *Queries) GetPaymentsEndingSoon(ctx context.Context) ([]GetPaymentsEndingSoonRow, error) {
+	rows, err := q.db.Query(ctx, getPaymentsEndingSoon)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPaymentsEndingSoonRow
+	for rows.Next() {
+		var i GetPaymentsEndingSoonRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Method,
+			&i.CreationDate,
+			&i.Period,
+			&i.IsNotified,
+			&i.UserID_2,
+			&i.FirstName,
+			&i.Username,
 		); err != nil {
 			return nil, err
 		}
@@ -117,7 +182,7 @@ func (q *Queries) GetUsersIDs(ctx context.Context) ([]int64, error) {
 }
 
 const getValidPayment = `-- name: GetValidPayment :one
-SELECT id, user_id, method, creation_date, period FROM pizda.payment WHERE user_id = $1 and period @> NOW()::DATE limit 1
+SELECT id, user_id, method, creation_date, period, is_notified FROM pizda.payment WHERE user_id = $1 and period @> NOW()::DATE limit 1
 `
 
 func (q *Queries) GetValidPayment(ctx context.Context, userID int64) (PizdaPayment, error) {
@@ -129,6 +194,7 @@ func (q *Queries) GetValidPayment(ctx context.Context, userID int64) (PizdaPayme
 		&i.Method,
 		&i.CreationDate,
 		&i.Period,
+		&i.IsNotified,
 	)
 	return i, err
 }
@@ -166,6 +232,15 @@ func (q *Queries) GetVideos(ctx context.Context) ([]PizdaFile, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const markPaymentAsNotified = `-- name: MarkPaymentAsNotified :exec
+UPDATE pizda.payment SET is_notified = true WHERE id = $1
+`
+
+func (q *Queries) MarkPaymentAsNotified(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, markPaymentAsNotified, id)
+	return err
 }
 
 const updateFileId = `-- name: UpdateFileId :exec

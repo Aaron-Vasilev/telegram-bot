@@ -32,3 +32,19 @@ SELECT * FROM pizda.file WHERE id=$1;
 
 -- name: UpdateFileId :exec
 UPDATE pizda.file SET file_id=$1 WHERE id=$2;
+
+-- name: GetPaymentsEndingSoon :many
+SELECT p.*, u.id as user_id, u.first_name, u.username
+FROM pizda.payment p
+JOIN pizda.user u ON p.user_id = u.id
+WHERE upper(p.period) - CURRENT_DATE <= 3
+  AND upper(p.period) - CURRENT_DATE >= 0
+  AND p.is_notified = false;
+
+-- name: MarkPaymentAsNotified :exec
+UPDATE pizda.payment SET is_notified = true WHERE id = $1;
+
+-- name: ExtendPaymentByMonth :exec
+UPDATE pizda.payment
+SET period = daterange(lower(period), (upper(period) + INTERVAL '1 month')::date, '[]')
+WHERE id = $1;

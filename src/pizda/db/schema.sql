@@ -17,7 +17,8 @@ CREATE TABLE pizda.payment (
   user_id BIGINT REFERENCES pizda."user"(id) ON DELETE CASCADE,
   method pizda.payment_method NOT NULL,
   creation_date DATE NOT NULL DEFAULT NOW(),
-  period daterange DEFAULT daterange(CURRENT_DATE, (CURRENT_DATE + INTERVAL '2 months')::date, '[]')
+  period daterange DEFAULT daterange(CURRENT_DATE, (CURRENT_DATE + INTERVAL '2 months')::date, '[]'),
+  is_notified BOOLEAN DEFAULT false
 );
 
 CREATE TABLE pizda.file (
