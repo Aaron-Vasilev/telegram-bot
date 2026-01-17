@@ -77,7 +77,7 @@ func (q *Queries) FindUsersByName(ctx context.Context, name string) ([]PizdaUser
 }
 
 const getPaymentsEndingSoon = `-- name: GetPaymentsEndingSoon :many
-SELECT p.id, p.user_id, p.method, p.creation_date, p.period, p.is_notified, u.id as user_id, u.first_name, u.username
+SELECT p.id, p.user_id, p.method, p.creation_date, p.period, p.is_notified, u.id as user_id, u.first_name, u.last_name, u.username
 FROM pizda.payment p
 JOIN pizda.user u ON p.user_id = u.id
 WHERE upper(p.period) - CURRENT_DATE <= 3
@@ -94,6 +94,7 @@ type GetPaymentsEndingSoonRow struct {
 	IsNotified   pgtype.Bool
 	UserID_2     int64
 	FirstName    string
+	LastName     string
 	Username     string
 }
 
@@ -115,6 +116,7 @@ func (q *Queries) GetPaymentsEndingSoon(ctx context.Context) ([]GetPaymentsEndin
 			&i.IsNotified,
 			&i.UserID_2,
 			&i.FirstName,
+			&i.LastName,
 			&i.Username,
 		); err != nil {
 			return nil, err

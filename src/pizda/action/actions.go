@@ -5,6 +5,7 @@ import (
 	"bot/src/pizda/db"
 	cnst "bot/src/pizda/utils/const"
 	t "bot/src/utils/types"
+	"fmt"
 	"log"
 )
 
@@ -41,6 +42,18 @@ func NotifyAboutPaymentExpiration(bot *bot.Bot) {
 					},
 				},
 			},
+		})
+
+		adminMessage := fmt.Sprintf(
+			"Subscription expiring soon:\nUsername: @%s\nName: %s %s",
+			payment.Username,
+			payment.FirstName,
+			payment.LastName,
+		)
+
+		bot.SendMessage(t.Message{
+			ChatId: 833382946,
+			Text:   adminMessage,
 		})
 
 		err = db.Query.MarkPaymentAsNotified(bot.Ctx, payment.ID)
