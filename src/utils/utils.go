@@ -413,4 +413,3 @@ func ConvertToUserWithMembership(u db.GetUsersWithMembershipRow) db.GetUserWithM
 		LessonsAvaliable: u.LessonsAvaliable,
 	}
 }
-

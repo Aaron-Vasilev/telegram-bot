@@ -46,7 +46,7 @@ func handleCallbackQuery(bot *bot.Bot, u t.Update) {
 		sendProgramm(bot, u.FromChat().ID)
 	} else if text == cnst.Whom {
 		sendToWhom(bot, u.FromChat().ID)
-	} else if text == cnst.Purchase || text == cnst.ExtendPayment {
+	} else if text == cnst.Purchase || text == cnst.HowToExtendPayment {
 		purchase(bot, u.FromChat().ID)
 	} else if text == cnst.Prices {
 		sendPrices(bot, u.FromChat().ID)
@@ -153,7 +153,7 @@ func handleAdminCmd(bot *bot.Bot, u t.Update) {
 
 		if err == nil {
 			db.Query.UpdateFileId(bot.Ctx, db.UpdateFileIdParams{
-				ID: int32(id),
+				ID:     int32(id),
 				FileID: data[2],
 			})
 			bot.SendText(u.FromChat().ID, "Sus")

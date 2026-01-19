@@ -29,8 +29,8 @@ func NotifyAboutPaymentExpiration(bot *bot.Bot) {
 <b>+ один дополнительный месяц за 100 ILS</b>`
 
 		bot.SendMessage(t.Message{
-			ChatId: payment.UserID_2,
-			Text:   message,
+			ChatId:    payment.UserID_2,
+			Text:      message,
 			ParseMode: "html",
 			ReplyMarkup: &t.InlineKeyboardMarkup{
 				InlineKeyboard: [][]t.InlineKeyboardButton{

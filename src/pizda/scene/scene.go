@@ -15,6 +15,7 @@ import (
 func RegisterScenes(bot *bot.Bot) {
 	bot.RegisterScene(cnst.ForwardAll, ForwardAll)
 	bot.RegisterScene(cnst.AssignSubscription, assignSubscription)
+	bot.RegisterScene(cnst.ExtendPayment, extendPayment)
 }
 
 func ForwardAll(bot *bot.Bot, u t.Update) {
@@ -197,6 +198,75 @@ func assignSubscription(bot *bot.Bot, u t.Update) {
 			bot.SendText(userId, "It's not an ID🔫")
 		}
 
+		bot.EndCtx(userId)
+		return
+	}
+
+	bot.NextCtx(userId)
+}
+
+func extendPayment(bot *bot.Bot, u t.Update) {
+	userId, _ := utils.UserIdFromUpdate(u)
+	state, ok := bot.GetCtxValue(userId)
+
+	if !ok {
+		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
+		bot.EndCtx(userId)
+		return
+	}
+
+	switch state.Stage {
+	case 1:
+		bot.SendMessage(t.Message{
+			ChatId:    userId,
+			Text:      "Пришли мне ник, фамилию или имя пользователя",
+			ParseMode: "html",
+		})
+	case 2:
+		if u.Message == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			bot.EndCtx(userId)
+			return
+		}
+
+		shouldContinue := sendUserList(bot, userId, u.Message.Text)
+
+		if !shouldContinue {
+			return
+		}
+	case 3:
+		if u.Message == nil {
+			bot.SendText(userId, utils.WrongMsg)
+			bot.EndCtx(userId)
+			return
+		}
+
+		userId64, err := strconv.ParseInt(u.Message.Text, 10, 64)
+
+		if err != nil {
+			bot.SendText(userId, "It's not an ID🔫")
+			bot.EndCtx(userId)
+			return
+		}
+
+		payment, err := db.Query.GetValidPayment(bot.Ctx, userId64)
+
+		if err != nil {
+			bot.SendText(userId, "User doesn't have an active payment")
+			bot.EndCtx(userId)
+			return
+		}
+
+		err = db.Query.ExtendPaymentByMonth(bot.Ctx, payment.ID)
+
+		if err != nil {
+			bot.SendText(userId, "Error extending payment: "+err.Error())
+			bot.EndCtx(userId)
+			return
+		}
+
+		bot.SendText(userId, "Payment extended by 1 month 🎉")
+		bot.SendText(userId64, "Твоя подписка была продлена на месяц! 🎊")
 		bot.EndCtx(userId)
 		return
 	}

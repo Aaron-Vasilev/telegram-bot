@@ -15,10 +15,11 @@ const (
 	// Admin keyboard
 	AssignSubscription = "Ученик оплатил 💳"
 	ForwardAll         = "Переслать всем сообщение"
+	ExtendPayment      = "Продлить подписку 🔄"
 
-	Video          = "VIDEO"
-	ErrorMsg       = "Что-по пошло не так, уже чиним 🛠️"
-	ExtendPayment  = "Продлить подписку 🔄"
+	Video              = "VIDEO"
+	ErrorMsg           = "Что-по пошло не так, уже чиним 🛠️"
+	HowToExtendPayment = "Как продлить подписку 🔄"
 )
 
 var (
@@ -35,6 +36,7 @@ var (
 	}
 	AdminKeyboard = []string{
 		AssignSubscription,
+		ExtendPayment,
 		ForwardAll,
 	}
 )
