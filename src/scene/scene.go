@@ -627,23 +627,22 @@ func ForwardAll(bot *bot.Bot, u t.Update) {
 			ReplyMarkup: &utils.ConformationInlineKeyboard,
 		})
 	case 3:
+		bot.EndCtx(userID)
+
 		if u.CallbackQuery == nil {
 			bot.SendText(userID, utils.WrongMsg)
-			bot.EndCtx(userID)
 			return
 		}
 
 		state, ok := bot.GetCtxValue(userID)
 		if !ok {
 			bot.SendText(userID, utils.WrongMsg)
-			bot.EndCtx(userID)
 			return
 		}
 
 		messageID, ok := state.Data.(int)
 		if !ok {
 			bot.SendText(userID, utils.WrongMsg)
-			bot.EndCtx(userID)
 			return
 		}
 
@@ -653,7 +652,6 @@ func ForwardAll(bot *bot.Bot, u t.Update) {
 
 			if err != nil {
 				bot.SendText(userID, err.Error())
-				bot.EndCtx(userID)
 				return
 			}
 
@@ -668,7 +666,6 @@ func ForwardAll(bot *bot.Bot, u t.Update) {
 
 			if err != nil {
 				bot.SendText(userID, "BlockUsers err: "+err.Error())
-				bot.EndCtx(userID)
 				return
 			}
 
@@ -676,7 +673,6 @@ func ForwardAll(bot *bot.Bot, u t.Update) {
 		} else {
 			bot.SendText(userID, "Ok")
 		}
-		bot.EndCtx(userID)
 		return
 	}
 

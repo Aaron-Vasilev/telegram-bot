@@ -63,7 +63,7 @@ func SendProfile(bot *bot.Bot, chatId int64) {
 	userWithMem, err := db.Query.GetUserWithMembership(bot.Ctx, chatId)
 
 	if err != nil {
-		bot.Error("Get user with memb error: " + err.Error())
+		bot.Error("Get user with memb error: " + err.Error() + "\nUser ID: " + strconv.FormatInt(chatId, 10))
 		bot.SendText(chatId, utils.WrongMsg)
 
 		return
