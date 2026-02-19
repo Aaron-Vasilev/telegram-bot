@@ -627,8 +627,6 @@ func ForwardAll(bot *bot.Bot, u t.Update) {
 			ReplyMarkup: &utils.ConformationInlineKeyboard,
 		})
 	case 3:
-		bot.EndCtx(userID)
-
 		if u.CallbackQuery == nil {
 			bot.SendText(userID, utils.WrongMsg)
 			return
@@ -646,6 +644,8 @@ func ForwardAll(bot *bot.Bot, u t.Update) {
 			return
 		}
 
+		bot.EndCtx(userID)
+
 		if u.CallbackQuery.Data == "YES" {
 			var idsToBlock []int64
 			ids, err := db.Query.GetUsersIDs(bot.Ctx)
@@ -655,6 +655,7 @@ func ForwardAll(bot *bot.Bot, u t.Update) {
 				return
 			}
 
+			bot.SendText(userID, "Starting forwarding, please wait🗿")
 			for i := range ids {
 				_, err := bot.Forward(ids[i], userID, messageID)
 
@@ -662,6 +663,7 @@ func ForwardAll(bot *bot.Bot, u t.Update) {
 					idsToBlock = append(idsToBlock, ids[i])
 				}
 			}
+			bot.SendText(userID, "Success🐑")
 			err = db.Query.BlockUsers(bot.Ctx, idsToBlock)
 
 			if err != nil {
@@ -669,7 +671,9 @@ func ForwardAll(bot *bot.Bot, u t.Update) {
 				return
 			}
 
-			bot.SendText(userID, fmt.Sprintf("Great success, %d blocked yoga bot", len(idsToBlock)))
+			if len(idsToBlock) > 0 {
+				bot.SendText(userID, fmt.Sprintf("Great success, %d blocked yoga bot", len(idsToBlock)))
+			}
 		} else {
 			bot.SendText(userID, "Ok")
 		}
