@@ -5,7 +5,7 @@ const (
 	Whom         = "Кому подходит? 🤔"
 	Programm     = "Программа 📋"
 	Purchase     = "Преобрести курс 💳"
-	TestTraining = "Пробная тренировка 🧘🏻‍♀️"
+	TestTraining = "Пробные тренировки 🧘🏻‍♀️"
 	Prices       = "Цены и тарифы 🏷️"
 
 	// Pay keyboard
@@ -20,6 +20,9 @@ const (
 	Video              = "VIDEO"
 	ErrorMsg           = "Что-по пошло не так, уже чиним 🛠️"
 	HowToExtendPayment = "Как продлить подписку 🔄"
+
+	HormoneYoga = "Гармональная йога ⚤"
+	TazDno      = "Мышцы тазового дна 🏋️‍♀️"
 )
 
 var (

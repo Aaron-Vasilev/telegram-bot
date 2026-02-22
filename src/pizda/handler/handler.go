@@ -52,6 +52,10 @@ func handleCallbackQuery(bot *bot.Bot, u t.Update) {
 		sendPrices(bot, u.FromChat().ID)
 	} else if strings.HasPrefix(text, cnst.Video) {
 		sendVideo(bot, u)
+	} else if text == cnst.TazDno {
+		sendTazDnoVideo(bot, u.FromChat().ID)
+	} else if text == cnst.HormoneYoga {
+		sendHormoneTestVideo(bot, u.FromChat().ID)
 	}
 }
 
@@ -257,11 +261,63 @@ func sendTestTraining(bot *bot.Bot, chatId int64) {
 		ChatId:         chatId,
 		ParseMode:      "html",
 		ProtectContent: true,
+		Text:           "Что тебя интересует больше?",
+		ReplyMarkup: &t.InlineKeyboardMarkup{
+			InlineKeyboard: [][]t.InlineKeyboardButton{
+				{
+					{
+						Text:         cnst.TazDno,
+						CallbackData: cnst.TazDno,
+					},
+				},
+				{
+					{
+						Text:         cnst.HormoneYoga,
+						CallbackData: cnst.HormoneYoga,
+					},
+				},
+			},
+		},
+	}
+
+	bot.SendMessage(msg)
+}
+
+func sendTazDnoVideo(bot *bot.Bot, chatId int64) {
+	msg := t.Message{
+		ChatId:         chatId,
+		ParseMode:      "html",
+		ProtectContent: true,
+		Video: &t.CustomVideo{
+			FileId:   "BAACAgIAAxkBAAIFEmkPcxZ0vx_oaOA3rZa2tXhxSHseAAJhjgACtUN4SKzvHd4WD75NNgQ",
+			IsString: true,
+		},
+		Caption: "✨ Самый полезный урок в этом курсе\n🎯 Видео, которое должна посмотреть каждая девушка\n🧠 Глубокая теория\n🤍 Минимум практики\n💎 Максимум смысла",
+		ReplyMarkup: &t.InlineKeyboardMarkup{
+			InlineKeyboard: [][]t.InlineKeyboardButton{
+				{
+					{
+						Text:         cnst.Prices,
+						CallbackData: cnst.Prices,
+					},
+				},
+			},
+		},
+	}
+
+	bot.SendVideoById(msg)
+}
+
+func sendHormoneTestVideo(bot *bot.Bot, chatId int64) {
+	msg := t.Message{
+		ChatId:         chatId,
+		ParseMode:      "html",
+		ProtectContent: true,
 		Video: &t.CustomVideo{
 			FileId:   "BAACAgIAAxkBAAIBmmkNAzXDBISkgMPEZrEgzCH0iwsOAAJwjgACQgpoSN7jz9up7CqcNgQ",
 			IsString: true,
 		},
-		Caption: "Посмотри это видео чтобы понять подходим ли мы друг-другу по вайбу😎\nЭто видео средней сложности. В курсе, мы начнём с простых практик и будем двигаться в сторону более продвинутых💪",
+		Caption: "⚡️ Этот урок меняет состояние\n🚫 Не обещания - 💥 эффект\n🔥 Чистая практика гормональной йоги\n⚖️ Средний уровень сложности\n👉 Просто попробуй - и тело ответит",
 		ReplyMarkup: &t.InlineKeyboardMarkup{
 			InlineKeyboard: [][]t.InlineKeyboardButton{
 				{
