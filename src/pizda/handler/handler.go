@@ -77,6 +77,14 @@ func HandleUpdate(bot *bot.Bot, u t.Update) {
 		bot.StartScene(u, u.Message.Text)
 	} else if slices.Contains(cnst.SaleKeyboard, u.Message.Text) || slices.Contains(cnst.PayKeyboard, u.Message.Text) {
 		handleKeyboard(bot, u)
+	} else if u.Message.Text == "Пробная тренировка 🧘🏻‍♀️" {
+		bot.SendMessage(
+			common.GenerateKeyboardMsg(
+				u.FromChat().ID,
+				cnst.SaleKeyboard,
+				"⬇️ Внизу, для удобства, есть клавиатура",
+			),
+		)
 	} else if utils.IsAdmin(userId) {
 		handleAdminCmd(bot, u)
 	}
