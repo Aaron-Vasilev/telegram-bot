@@ -297,7 +297,7 @@ func sendTazDnoVideo(bot *bot.Bot, chatId int64) {
 		ParseMode:      "html",
 		ProtectContent: true,
 		Video: &t.CustomVideo{
-			FileId:   "BAACAgIAAxkBAAIFEmkPcxZ0vx_oaOA3rZa2tXhxSHseAAJhjgACtUN4SKzvHd4WD75NNgQ",
+			FileId:   "BAACAgIAAxkBAAIFyWkPpiDY3cWyznNLF9mIb6jEV80hAAKKkQACtUN4SOBAvD-ltC8vNgQ",
 			IsString: true,
 		},
 		Caption: "✨ Самый полезный урок в этом курсе\n🎯 Видео, которое должна посмотреть каждая девушка\n🧠 Глубокая теория\n🤍 Минимум практики\n💎 Максимум смысла",
