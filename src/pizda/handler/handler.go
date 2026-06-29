@@ -372,7 +372,7 @@ func sendPrices(bot *bot.Bot, chatId int64) {
 				BaseInputMedia: t.BaseInputMedia{
 					Type:      "photo",
 					Media:     "https://bot-telega.s3.il-central-1.amazonaws.com/pizda/plan_1.JPG",
-					Caption:   "Ценa:\nДо первого июля - <b>150₪</b> или <b>3450₽</b>🏷️\nПосле - <b>300₪</b> или <b>7900₽</b>\nВключая консультацию и поддержку в групповом чате",
+					Caption:   "Ценa:\nДо первого июля - <b>150₪</b> или <b>3450₽</b>🏷️\nПосле - <b>300₪</b> или <b>7900₽</b>\n\nВключая консультацию и поддержку в групповом чате",
 					ParseMode: "html",
 				},
 			},

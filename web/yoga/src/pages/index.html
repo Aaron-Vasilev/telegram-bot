@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yoga · Pricing</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  </head>
+  <body>
+    <main class="page">
+      <header class="studio-header">
+        <img class="logo-mark" src="https://bot-telega.s3.il-central-1.amazonaws.com/payments/yoletta.jpeg" alt="">
+        <h1 class="studio-name">yoletta</h1>
+        <p id="user-greeting" class="studio-tagline">Choose your practice</p>
+      </header>
+
+      <form id="payment-form" action="/create-payment" method="POST">
+        <input type="hidden" name="telegram_user_id" id="telegram-user-id">
+
+        <div class="plans-grid">
+
+          <label class="plan-card" for="plan-m1">
+            <input type="radio" id="plan-m1" name="plan" value="membership_1" required>
+            <div class="plan-inner">
+              <h2 class="plan-title">One lesson<br><span class="plan-freq">per week</span></h2>
+              <div class="plan-price">
+                <span>280<span class="plan-currency">₪</span></span>
+                <span class="plan-tag">Membership</span>
+              </div>
+            </div>
+          </label>
+
+          <label class="plan-card" for="plan-m2">
+            <input type="radio" id="plan-m2" name="plan" value="membership_2">
+            <div class="plan-inner">
+              <h2 class="plan-title">Two lessons<br><span class="plan-freq">per week</span></h2>
+              <div class="plan-price">
+                <span>400<span class="plan-currency">₪</span></span>
+                <span class="plan-tag">Membership</span>
+              </div>
+            </div>
+          </label>
+
+          <label class="plan-card" for="plan-sf">
+            <input type="radio" id="plan-sf" name="plan" value="single_first">
+            <div class="plan-inner">
+              <h2 class="plan-title">First<br><span class="plan-freq">class</span></h2>
+              <div class="plan-price">
+                <span>70<span class="plan-currency">₪</span></span>
+                <span class="plan-tag first">First visit</span>
+              </div>
+            </div>
+          </label>
+
+          <label class="plan-card" for="plan-s">
+            <input type="radio" id="plan-s" name="plan" value="single">
+            <div class="plan-inner">
+              <h2 class="plan-title">Single<br><span class="plan-freq">class</span></h2>
+              <p class="plan-detail">No commitment</p>
+              <div class="plan-price">
+                <span>
+                  90<span class="plan-currency">₪</span>
+                </span>
+                <span class="plan-tag">Drop-in</span>
+              </div>
+            </div>
+          </label>
+
+        </div>
+
+        <div class="form-footer">
+          <button
+            type="submit"
+            id="submit-btn"
+            class="btn-price"
+          >
+            Proceed to payment
+          </button>
+        </div>
+      </form>
+    </main>
+  </body>
+</html>

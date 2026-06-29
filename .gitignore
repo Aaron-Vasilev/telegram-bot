@@ -3,3 +3,4 @@ pg_cmd
 *.pem
 tmp
 backup.sql
+node_modules

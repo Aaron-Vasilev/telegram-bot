@@ -32,8 +32,7 @@ type Bot struct {
 	Offset      int
 	Ctx         context.Context
 	WebhookPort string
-	// Commands    []Command
-	Scenes map[string]commandCallback
+	Scenes      map[string]commandCallback
 }
 
 func NewBot(token string) *Bot {

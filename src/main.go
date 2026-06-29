@@ -5,6 +5,7 @@ import (
 	"bot/src/cron"
 	"bot/src/db"
 	"bot/src/handler"
+	"bot/src/payment"
 	"bot/src/utils"
 	"fmt"
 	"os"
@@ -19,6 +20,8 @@ func main() {
 	connection := db.ConnectDB(bot)
 	defer connection.Close(bot.Ctx)
 	cron.Cron(bot)
+
+	payment.StartPaymentServer(bot)
 
 	fmt.Println("Started")
 	if bot.IsProd {
