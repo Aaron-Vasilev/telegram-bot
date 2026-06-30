@@ -78,13 +78,7 @@ func HandleUpdate(bot *bot.Bot, u t.Update) {
 	} else if slices.Contains(cnst.SaleKeyboard, u.Message.Text) || slices.Contains(cnst.PayKeyboard, u.Message.Text) {
 		handleKeyboard(bot, u)
 	} else if u.Message.Text == cnst.TestTraining {
-		bot.SendMessage(
-			common.GenerateKeyboardMsg(
-				u.FromChat().ID,
-				cnst.SaleKeyboard,
-				"⬇️ Внизу, для удобства, есть клавиатура",
-			),
-		)
+		sendTestTraining(bot, u.FromChat().ID)
 	} else if u.Message.Text == cnst.PrevTestTraining {
 		sendTestTraining(bot, u.FromChat().ID)
 		bot.SendMessage(
