@@ -54,7 +54,7 @@ document.getElementById('payment-form').addEventListener('submit', async e => {
 
   try {
     const apiBase = process.env.PAYMENT_API_URL || ''
-    const res = await fetch(`${apiBase}/create-payment`, {
+    const res = await fetch(`${apiBase}/api/create-payment`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ plan: planEl.value, telegram_user_id: telegramUserId }),

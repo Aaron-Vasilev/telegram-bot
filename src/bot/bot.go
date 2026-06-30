@@ -33,6 +33,7 @@ type Bot struct {
 	Ctx         context.Context
 	WebhookPort string
 	Scenes      map[string]commandCallback
+	Mux         *http.ServeMux
 }
 
 func NewBot(token string) *Bot {
@@ -63,6 +64,7 @@ func NewBot(token string) *Bot {
 		WebhookPort: webhookPort,
 		Ctx:         ctx,
 		Scenes:      map[string]commandCallback{},
+		Mux:         http.NewServeMux(),
 	}
 }
 
@@ -353,6 +355,19 @@ func (bot *Bot) SetCtxValue(userId int64, state SceneState) {
 	bot.Ctx = context.WithValue(bot.Ctx, sceneKey, sMap)
 }
 
+func (bot *Bot) StartHTTPServer() {
+	port := os.Getenv("HTTP_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	go func() {
+		log.Printf("HTTP server on :%s", port)
+		if err := http.ListenAndServe(":"+port, bot.Mux); err != nil {
+			log.Fatalf("HTTP server failed: %v", err)
+		}
+	}()
+}
+
 func (bot *Bot) StartLongPulling(handler func(bot *Bot, updates []t.Update)) {
 	for {
 		updates := bot.GetUpdates()
@@ -397,17 +412,16 @@ func (bot *Bot) StartWebhook(handler func(bot *Bot, update t.Update)) {
 		log.Printf("Webhook status warning: %v", err)
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/webhook", webhookHandler(bot, handler))
+	bot.Mux.HandleFunc("/webhook", webhookHandler(bot, handler))
 
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	bot.Mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
 
 	server := &http.Server{
 		Addr:    ":" + bot.WebhookPort,
-		Handler: mux,
+		Handler: bot.Mux,
 	}
 
 	go func() {

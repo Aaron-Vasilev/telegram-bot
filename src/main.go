@@ -27,6 +27,7 @@ func main() {
 	if bot.IsProd {
 		bot.StartWebhook(handler.HandleUpdate)
 	} else {
+		bot.StartHTTPServer()
 		bot.StartLongPulling(handler.HandleUpdates)
 	}
 }

@@ -2,11 +2,12 @@ package cnst
 
 const (
 	// No pay keyboard
-	Whom         = "Кому подходит? 🤔"
-	Programm     = "Программа 📋"
-	Purchase     = "Преобрести курс 💳"
-	TestTraining = "Пробные тренировки 🧘🏻‍♀️"
-	Prices       = "Цены и тарифы 🏷️"
+	Whom             = "Кому подходит? 🤔"
+	Programm         = "Программа 📋"
+	Purchase         = "Преобрести курс 💳"
+	TestTraining     = "Попробовать 🤸🏾‍♀️"
+	PrevTestTraining = "Пробные тренировки 🧘🏻‍♀️"
+	Prices           = "Цены и тарифы 🏷️"
 
 	// Pay keyboard
 	Lessons      = "Уроки 📚"

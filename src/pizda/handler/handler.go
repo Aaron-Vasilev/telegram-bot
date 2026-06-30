@@ -77,7 +77,16 @@ func HandleUpdate(bot *bot.Bot, u t.Update) {
 		bot.StartScene(u, u.Message.Text)
 	} else if slices.Contains(cnst.SaleKeyboard, u.Message.Text) || slices.Contains(cnst.PayKeyboard, u.Message.Text) {
 		handleKeyboard(bot, u)
-	} else if u.Message.Text == "Пробная тренировка 🧘🏻‍♀️" {
+	} else if u.Message.Text == cnst.TestTraining {
+		bot.SendMessage(
+			common.GenerateKeyboardMsg(
+				u.FromChat().ID,
+				cnst.SaleKeyboard,
+				"⬇️ Внизу, для удобства, есть клавиатура",
+			),
+		)
+	} else if u.Message.Text == cnst.PrevTestTraining {
+		sendTestTraining(bot, u.FromChat().ID)
 		bot.SendMessage(
 			common.GenerateKeyboardMsg(
 				u.FromChat().ID,
@@ -249,7 +258,7 @@ func sendProgramm(bot *bot.Bot, userId int64) {
 func sendToWhom(bot *bot.Bot, userId int64) {
 	bot.SendMessage(t.Message{
 		ChatId:    userId,
-		Text:      "Тебе подходит этот курс, если <b>совпадает хоть один</b> из этих пунктов✅:\n\n1. Ты <b>планируешь беременность сейчас или через 1-2 года</b> и хочешь подготовить себя к этому. Чтобы уменьшить риски для своего здоровья и красоты.\n\n2. Ты <b>уже мама</b> и хочешь комплексно восстановить женское здоровье: мышцы тазового дна, гормональный баланс, стройное подтянутое тело. 3. Есть заболевания по-женски (эндиметроиоз, миомы, поликистоз) или <b>ТЯЖЕЛЫЙ ПМС</b>. Изучи специальные техники, которые будут корректировать твое состояние, а не ухудшать.",
+		Text:      "Тебе подходит этот курс, если <b>совпадает хоть один</b> из этих пунктов✅:\n\n1. Ты <b>планируешь беременность сейчас или через 1-2 года</b> и хочешь подготовить себя к этому. Чтобы уменьшить риски для своего здоровья и красоты.\n\n2. Ты <b>уже мама</b> и хочешь комплексно восстановить женское здоровье: мышцы тазового дна, гормональный баланс, стройное подтянутое тело.\n\n3. Есть заболевания по-женски (эндиметроиоз, миомы, поликистоз) или <b>ТЯЖЕЛЫЙ ПМС</b>. Изучи специальные техники, которые будут корректировать твое состояние, а не ухудшать.",
 		ParseMode: "html",
 		ReplyMarkup: &t.InlineKeyboardMarkup{
 			InlineKeyboard: [][]t.InlineKeyboardButton{
@@ -374,12 +383,6 @@ func sendPrices(bot *bot.Bot, chatId int64) {
 					Media:     "https://bot-telega.s3.il-central-1.amazonaws.com/pizda/plan_1.JPG",
 					Caption:   "Ценa:\nДо первого июля - <b>150₪</b> или <b>3450₽</b>🏷️\nПосле - <b>300₪</b> или <b>7900₽</b>\n\nВключая консультацию и поддержку в групповом чате",
 					ParseMode: "html",
-				},
-			},
-			{
-				BaseInputMedia: t.BaseInputMedia{
-					Type:  "photo",
-					Media: "https://bot-telega.s3.il-central-1.amazonaws.com/pizda/plan_2.jpg",
 				},
 			},
 		},

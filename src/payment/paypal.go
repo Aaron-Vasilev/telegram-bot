@@ -17,22 +17,11 @@ import (
 )
 
 func StartPaymentServer(b *bot.Bot) {
-	port := os.Getenv("HTTP_PORT")
-	if port == "" {
-		port = "8080"
-	}
+	b.Mux.HandleFunc("/api/create-payment", createPaymentHandler(b))
+	b.Mux.HandleFunc("/api/payment-success", paymentSuccessHandler(b))
+	b.Mux.HandleFunc("/api/paypal", paypalWebhookHandler(b))
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/create-payment", createPaymentHandler(b))
-	mux.HandleFunc("/payment-success", paymentSuccessHandler(b))
-	mux.HandleFunc("/paypal", paypalWebhookHandler(b))
-
-	go func() {
-		log.Printf("Payment server on :%s", port)
-		if err := http.ListenAndServe(":"+port, mux); err != nil {
-			log.Fatalf("Payment server failed: %v", err)
-		}
-	}()
+	b.Mux.Handle("/yoga/", http.StripPrefix("/yoga", http.FileServer(http.Dir("pages/yoga"))))
 }
 
 type planInfo struct {
@@ -217,8 +206,8 @@ func createOrder(plan planInfo, planKey, telegramUserID string) (string, error) 
 		"application_context": map[string]any{
 			"brand_name":  "Yoga Studio",
 			"user_action": "PAY_NOW",
-			"return_url":  base + "/payment-success",
-			"cancel_url":  base + "/payment-cancel",
+			"return_url":  base + "/api/payment-success",
+			"cancel_url":  base + "/api/payment-cancel",
 		},
 	}
 

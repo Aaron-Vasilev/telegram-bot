@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yoga · Pricing</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/yoga/styles.css">
   </head>
   <body>
     <main class="page">
@@ -14,7 +15,7 @@
         <p id="user-greeting" class="studio-tagline">Choose your practice</p>
       </header>
 
-      <form id="payment-form" action="/create-payment" method="POST">
+      <form id="payment-form" action="/api/create-payment" method="POST">
         <input type="hidden" name="telegram_user_id" id="telegram-user-id">
 
         <div class="plans-grid">
@@ -79,5 +80,6 @@
         </div>
       </form>
     </main>
+    <script src="/yoga/index.js"></script>
   </body>
 </html>
