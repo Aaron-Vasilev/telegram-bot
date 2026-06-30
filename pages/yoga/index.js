@@ -4,6 +4,7 @@ const prices = {
   single_first: '70₪',
   single: '90₪',
 }
+const isDev = window.location.host !== 'https://yogabot.onedoq.com'
 
 const tg = window.Telegram?.WebApp
 if (tg) tg.ready()
@@ -18,7 +19,7 @@ if (user?.first_name) {
 
 if (user?.id) {
   document.getElementById('telegram-user-id').value = user.id
-} else if (process.env.NODE_ENV === 'development') {
+} else if (isDev) {
   document.getElementById('telegram-user-id').value = '362575139'
 }
 
@@ -38,7 +39,7 @@ document.getElementById('payment-form').addEventListener('submit', async e => {
   const planEl = document.querySelector('[name="plan"]:checked')
   let telegramUserId = document.getElementById('telegram-user-id').value
 
-  if (process.env.NODE_ENV === 'development') {
+  if (isDev) {
     telegramUserId = '362575139'
   }
 
@@ -53,8 +54,7 @@ document.getElementById('payment-form').addEventListener('submit', async e => {
   btn.textContent = 'Processing…'
 
   try {
-    const apiBase = process.env.PAYMENT_API_URL || ''
-    const res = await fetch(`${apiBase}/api/create-payment`, {
+    const res = await fetch('/api/create-payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ plan: planEl.value, telegram_user_id: telegramUserId }),
