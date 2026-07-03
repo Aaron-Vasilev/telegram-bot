@@ -36,3 +36,22 @@ sql:
             go_type: "time.Time"
           - db_type: "pgtype.Text"
             go_type: "string"
+  - engine: "postgresql"
+    queries: "./src/online/db/query.sql"
+    schema: "./src/online/db/schema.sql"
+    gen:
+      go:
+        package: "db"
+        out: "./src/online/db"
+        sql_package: "pgx/v5"
+        overrides:
+          - db_type: "pg_catalog.int4"
+            go_type: "int"
+          - db_type: "pg_catalog.int8"
+            go_type: "int64"
+          - column: "online.subscription.user_id"
+            go_type: "int64"
+          - db_type: "pg_catalog.time"
+            go_type: "time.Time"
+          - db_type: "date"
+            go_type: "time.Time"

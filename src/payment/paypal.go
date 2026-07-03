@@ -2,9 +2,9 @@ package payment
 
 import (
 	"bot/src/bot"
+	"bot/src/common"
 	"bot/src/controller"
 	"bot/src/db"
-	"bot/src/utils"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -86,7 +86,7 @@ func createPaymentHandler(b *bot.Bot) http.HandlerFunc {
 			}
 		}
 
-		b.SendHTML(receiverID(), fmt.Sprintf(
+		b.SendHTML(common.AdminChatID(), fmt.Sprintf(
 			"🛒 Checkout started!\n\n%s\nPlan: %s",
 			userName, plan.Label,
 		))
@@ -127,7 +127,7 @@ func paymentSuccessHandler(b *bot.Bot) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, `<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px">
+		fmt.Fprint(w, `<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px;margin-top:50%">
 <h1>✅ Payment successful!</h1><p>See you on the mat 🧘</p></body></html>`)
 
 		notifyCapture(b, capture)
@@ -168,7 +168,7 @@ func paypalWebhookHandler(b *bot.Bot) http.HandlerFunc {
 		case "PAYMENT.CAPTURE.DENIED":
 			name := extractPayerName(event.Resource)
 			amount := extractAmount(event.Resource)
-			b.SendHTML(receiverID(), fmt.Sprintf("❌ Payment denied!\n\nCustomer: <b>%s</b>\nAmount: <b>%s</b>", name, amount))
+			b.SendHTML(common.AdminChatID(), fmt.Sprintf("❌ Payment denied!\n\nCustomer: <b>%s</b>\nAmount: <b>%s</b>", name, amount))
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -297,7 +297,7 @@ func notifyCapture(b *bot.Bot, c captureResult) {
 		"✅ Payment received!\n\nCustomer: <b>%s</b>\nTelegram ID: <code>%s</code>\nEmail: %s\nAmount: <b>%s</b>\nOrder: <code>%s</code>",
 		c.Name, c.TelegramUserID, c.Email, c.Amount, c.ID,
 	)
-	b.SendHTML(receiverID(), msg)
+	b.SendHTML(common.AdminChatID(), msg)
 }
 
 func extractAmount(resource map[string]any) string {
@@ -383,12 +383,4 @@ func getPaypalToken() (string, error) {
 		return "", fmt.Errorf("empty token")
 	}
 	return result.AccessToken, nil
-}
-
-func receiverID() int64 {
-	if os.Getenv("ENV") == "production" {
-		return utils.VIOLETTA_ID
-	}
-
-	return utils.MY_ID
 }

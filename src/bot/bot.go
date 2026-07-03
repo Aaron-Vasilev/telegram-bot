@@ -259,6 +259,17 @@ func (bot *Bot) SendMediaGroup(msg t.Message) ([]byte, error) {
 	return Send(bot, "/SendMediaGroup", msg)
 }
 
+type banParams struct {
+	ChatId int64 `json:"chat_id"`
+	UserId int64 `json:"user_id"`
+}
+
+func (bot *Bot) KickChatMember(chatId, userId int64) {
+	p := banParams{ChatId: chatId, UserId: userId}
+	Send(bot, "/banChatMember", p)
+	Send(bot, "/unbanChatMember", p)
+}
+
 func (bot *Bot) SendPool(poll t.PollMessage) (t.Message, error) {
 	var res t.Response[t.Message]
 	body, err := Send(bot, "/sendPoll", poll)

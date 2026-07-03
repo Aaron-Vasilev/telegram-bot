@@ -1,9 +1,18 @@
 package common
 
 import (
+	"bot/src/utils"
 	t "bot/src/utils/types"
+	"os"
 	"slices"
 )
+
+func AdminChatID() int64 {
+	if os.Getenv("ENV") == "production" {
+		return utils.VIOLETTA_ID
+	}
+	return utils.MY_ID
+}
 
 func GenerateKeyboardMsg(chatId int64, keys []string, text string) t.Message {
 	var keyboard [][]t.KeyboardButton

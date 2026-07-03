@@ -55,6 +55,8 @@ const (
 
 	VIOLETTA_ID = 833382946
 	MY_ID       = 362575139
+
+	ONLINE_CHAT_ID int64 = 0
 )
 
 var (

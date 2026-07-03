@@ -28,3 +28,16 @@ pizda_restart:
 	@echo Build ends
 	@sudo supervisorctl restart pizda
 	@echo Started
+#
+#Online
+#
+online:
+	go run ./src/online/main.go
+online_build:
+	 @go build -o ./tmp/online ./src/online/main.go
+online_restart:
+	@git pull
+	@go build -o ./tmp/online ./src/online/main.go
+	@echo Build ends
+	@sudo supervisorctl restart online
+	@echo Started

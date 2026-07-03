@@ -2,10 +2,10 @@ package main
 
 import (
 	"bot/src/bot"
-	"bot/src/cron"
-	"bot/src/db"
-	"bot/src/handler"
-	"bot/src/payment"
+	"bot/src/online/cron"
+	"bot/src/online/db"
+	"bot/src/online/handler"
+	"bot/src/online/scene"
 	"bot/src/utils"
 	"fmt"
 	"os"
@@ -19,18 +19,13 @@ func main() {
 	bot := bot.NewBot(os.Getenv("TOKEN"))
 	connection := db.ConnectDB(bot)
 	defer connection.Close(bot.Ctx)
+	scene.RegisterScenes(bot)
 	cron.Cron(bot)
 
-	payment.StartPaymentServer(bot)
-	payment.StartSubscriptionServer(bot)
-
-	fmt.Println("Started")
+	fmt.Println("Started!")
 	if bot.IsProd {
 		bot.StartWebhook(handler.HandleUpdate)
 	} else {
-		bot.StartHTTPServer()
 		bot.StartLongPulling(handler.HandleUpdates)
 	}
 }
-
-//TODO FAILD if user sends sticker

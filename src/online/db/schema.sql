@@ -1,0 +1,21 @@
+CREATE SCHEMA online;
+ALTER SCHEMA online OWNER TO postgres;
+
+CREATE TABLE online."user" (
+  id BIGINT PRIMARY KEY,
+  username CHARACTER VARYING(32) NOT NULL DEFAULT '',
+  first_name CHARACTER VARYING(128) NOT NULL,
+  last_name CHARACTER VARYING(128) NOT NULL DEFAULT '',
+  is_blocked BOOLEAN DEFAULT false
+);
+
+CREATE TABLE online.subscription (
+  id SERIAL PRIMARY KEY,
+  user_id BIGINT REFERENCES online."user"(id) ON DELETE CASCADE NOT NULL,
+  paypal_subscription_id TEXT NOT NULL DEFAULT '',
+  starts DATE NOT NULL DEFAULT CURRENT_DATE,
+  ends DATE NOT NULL,
+  is_manual BOOLEAN NOT NULL DEFAULT false,
+  is_notified BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

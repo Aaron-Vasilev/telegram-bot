@@ -4,3 +4,4 @@ pg_cmd
 tmp
 backup.sql
 node_modules
+.DS_Store

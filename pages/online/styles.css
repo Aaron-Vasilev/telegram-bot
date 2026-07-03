@@ -1,0 +1,201 @@
+/* ─── Variables ─── */
+:root {
+  --bg: #faf9f7;
+  --card-bg: #ffffff;
+  --accent: #7a9e7e;
+  --accent-light: #edf4ee;
+  --accent-dark: #4d7a52;
+  --text: #2d2926;
+  --text-muted: #8a8278;
+  --border: #e8e4de;
+  --radius: 18px;
+  --shadow: 0 2px 20px rgba(45, 41, 38, 0.07);
+  --shadow-hover: 0 8px 40px rgba(45, 41, 38, 0.13);
+}
+
+/* ─── Reset ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ─── Base ─── */
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 15% 60%, rgba(122, 158, 126, 0.09) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 15%, rgba(122, 158, 126, 0.07) 0%, transparent 50%);
+  color: var(--text);
+  font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  padding: 24px 16px;
+}
+
+/* ─── Page ─── */
+.page {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* ─── Header ─── */
+.studio-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.logo-mark {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  object-fit: cover;
+  display: block;
+  animation: breathe 4s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+.studio-name {
+  font-size: clamp(2.2rem, 6vw, 3rem);
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.studio-tagline {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Plans Grid ─── */
+.plans-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+/* ─── Plan Card ─── */
+.plan-card {
+  display: block;
+  animation: cardIn 0.5s ease both;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.plan-inner {
+  background: var(--card-bg);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(122, 158, 126, 0.18);
+  background: var(--accent-light);
+}
+
+.plan-inner::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--accent);
+}
+
+/* ─── Plan Title ─── */
+.plan-title {
+  font-size: 1.3rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+.plan-freq {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+/* ─── Plan Detail ─── */
+.plan-detail {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ─── Plan Tag ─── */
+.plan-tag {
+  display: inline-block;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+}
+
+/* ─── Plan Price ─── */
+.plan-price {
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+.plan-currency {
+  font-size: 1.3rem;
+  opacity: 0.65;
+  margin-left: 1px;
+}
+
+/* ─── Form Footer ─── */
+.form-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+button[type="submit"] {
+  width: 100%;
+  padding: 16px 22px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+  box-shadow: 0 4px 20px rgba(122, 158, 126, 0.35);
+  transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+  cursor: pointer;
+}
+button[type="submit"]:hover { background: var(--accent-dark); }
+button[type="submit"]:active { transform: translateY(0); }
+button[type="submit"]:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+.status-message {
+  text-align: center;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-top: 16px;
+  min-height: 1.4em;
+}
+.status-message.success { color: var(--accent-dark); }
+.status-message.error { color: #b04a4a; }
+
+#paypal-button-container {
+  margin-top: 8px;
+  min-height: 45px;
+}
