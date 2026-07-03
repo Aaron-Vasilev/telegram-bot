@@ -6,6 +6,22 @@
     <title>Yoletta Online · Subscription</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="/online/styles.css">
+    <style>
+      .subscribe-btn {
+        display: block;
+        width: 100%;
+        padding: 14px 20px;
+        margin-top: 20px;
+        background: #1a73e8;
+        color: white;
+        border: none;
+        border-radius: 999px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .subscribe-btn:hover { background: #1666c7; }
+    </style>
   </head>
   <body>
     <main class="page">
@@ -30,7 +46,7 @@
         </div>
       </div>
 
-      <div id="paypal-button-container"></div>
+      <div id="subscribe-container"></div>
       <p id="status-message" class="status-message"></p>
     </main>
     <script src="/online/index.js"></script>

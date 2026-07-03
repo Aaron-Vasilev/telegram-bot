@@ -3,6 +3,7 @@ package cron
 import (
 	"bot/src/action"
 	"bot/src/bot"
+	"bot/src/payment"
 	"log"
 	"time"
 
@@ -32,6 +33,10 @@ func Cron(bot *bot.Bot) {
 
 	c.AddFunc("0 21 * * *", func() {
 		action.NotifyAboutTommorowLesson(bot)
+	})
+
+	c.AddFunc("0 8 * * *", func() {
+		payment.RenewAllDueSubscriptions(bot)
 	})
 
 	go c.Start()

@@ -12,10 +12,12 @@ CREATE TABLE online."user" (
 CREATE TABLE online.subscription (
   id SERIAL PRIMARY KEY,
   user_id BIGINT REFERENCES online."user"(id) ON DELETE CASCADE NOT NULL,
-  paypal_subscription_id TEXT NOT NULL DEFAULT '',
+  payment_ref TEXT NOT NULL DEFAULT '',
+  payment_token TEXT NOT NULL DEFAULT '',
   starts DATE NOT NULL DEFAULT CURRENT_DATE,
   ends DATE NOT NULL,
   is_manual BOOLEAN NOT NULL DEFAULT false,
   is_notified BOOLEAN NOT NULL DEFAULT false,
+  is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );

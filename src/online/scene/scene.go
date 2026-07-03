@@ -75,11 +75,10 @@ func assignSubscription(bot *bot.Bot, u t.Update) {
 		ends := starts.AddDate(0, 1, 0)
 
 		_, err = db.Query.CreateSubscription(bot.Ctx, db.CreateSubscriptionParams{
-			UserID:               payerId,
-			PaypalSubscriptionID: "",
-			Starts:               starts,
-			Ends:                 ends,
-			IsManual:             true,
+			UserID:   payerId,
+			Starts:   starts,
+			Ends:     ends,
+			IsManual: true,
 		})
 
 		if err != nil {

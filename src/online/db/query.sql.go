@@ -13,23 +13,25 @@ import (
 )
 
 const createSubscription = `-- name: CreateSubscription :one
-INSERT INTO online.subscription (user_id, paypal_subscription_id, starts, ends, is_manual)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, user_id, paypal_subscription_id, starts, ends, is_manual, is_notified, created_at
+INSERT INTO online.subscription (user_id, payment_ref, payment_token, starts, ends, is_manual)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, user_id, payment_ref, payment_token, starts, ends, is_manual, is_notified, is_active, created_at
 `
 
 type CreateSubscriptionParams struct {
-	UserID               int64
-	PaypalSubscriptionID string
-	Starts               time.Time
-	Ends                 time.Time
-	IsManual             bool
+	UserID       int64
+	PaymentRef   string
+	PaymentToken string
+	Starts       time.Time
+	Ends         time.Time
+	IsManual     bool
 }
 
 func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) (OnlineSubscription, error) {
 	row := q.db.QueryRow(ctx, createSubscription,
 		arg.UserID,
-		arg.PaypalSubscriptionID,
+		arg.PaymentRef,
+		arg.PaymentToken,
 		arg.Starts,
 		arg.Ends,
 		arg.IsManual,
@@ -38,14 +40,27 @@ func (q *Queries) CreateSubscription(ctx context.Context, arg CreateSubscription
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.PaypalSubscriptionID,
+		&i.PaymentRef,
+		&i.PaymentToken,
 		&i.Starts,
 		&i.Ends,
 		&i.IsManual,
 		&i.IsNotified,
+		&i.IsActive,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const deactivateSubscription = `-- name: DeactivateSubscription :exec
+UPDATE online.subscription
+SET is_active = false
+WHERE id = $1
+`
+
+func (q *Queries) DeactivateSubscription(ctx context.Context, id int32) error {
+	_, err := q.db.Exec(ctx, deactivateSubscription, id)
+	return err
 }
 
 const extendSubscription = `-- name: ExtendSubscription :exec
@@ -98,7 +113,7 @@ func (q *Queries) FindUsersByName(ctx context.Context, dollar_1 pgtype.Text) ([]
 }
 
 const getActiveSubscription = `-- name: GetActiveSubscription :one
-SELECT id, user_id, paypal_subscription_id, starts, ends, is_manual, is_notified, created_at FROM online.subscription
+SELECT id, user_id, payment_ref, payment_token, starts, ends, is_manual, is_notified, is_active, created_at FROM online.subscription
 WHERE user_id = $1 AND ends >= CURRENT_DATE
 ORDER BY ends DESC
 LIMIT 1
@@ -110,11 +125,13 @@ func (q *Queries) GetActiveSubscription(ctx context.Context, userID int64) (Onli
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.PaypalSubscriptionID,
+		&i.PaymentRef,
+		&i.PaymentToken,
 		&i.Starts,
 		&i.Ends,
 		&i.IsManual,
 		&i.IsNotified,
+		&i.IsActive,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -151,7 +168,7 @@ func (q *Queries) GetExpiredUsers(ctx context.Context) ([]int64, error) {
 }
 
 const getManualSubscriptionsEndingTomorrow = `-- name: GetManualSubscriptionsEndingTomorrow :many
-SELECT s.id, s.user_id, s.paypal_subscription_id, s.starts, s.ends, s.is_manual, s.is_notified, s.created_at, u.username, u.first_name, u.last_name
+SELECT s.id, s.user_id, s.payment_ref, s.payment_token, s.starts, s.ends, s.is_manual, s.is_notified, s.is_active, s.created_at, u.username, u.first_name, u.last_name
 FROM online.subscription s
 JOIN online."user" u ON s.user_id = u.id
 WHERE s.ends = CURRENT_DATE + 1
@@ -160,17 +177,19 @@ WHERE s.ends = CURRENT_DATE + 1
 `
 
 type GetManualSubscriptionsEndingTomorrowRow struct {
-	ID                   int32
-	UserID               int64
-	PaypalSubscriptionID string
-	Starts               time.Time
-	Ends                 time.Time
-	IsManual             bool
-	IsNotified           bool
-	CreatedAt            pgtype.Timestamp
-	Username             string
-	FirstName            string
-	LastName             string
+	ID           int32
+	UserID       int64
+	PaymentRef   string
+	PaymentToken string
+	Starts       time.Time
+	Ends         time.Time
+	IsManual     bool
+	IsNotified   bool
+	IsActive     bool
+	CreatedAt    pgtype.Timestamp
+	Username     string
+	FirstName    string
+	LastName     string
 }
 
 func (q *Queries) GetManualSubscriptionsEndingTomorrow(ctx context.Context) ([]GetManualSubscriptionsEndingTomorrowRow, error) {
@@ -185,11 +204,13 @@ func (q *Queries) GetManualSubscriptionsEndingTomorrow(ctx context.Context) ([]G
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
-			&i.PaypalSubscriptionID,
+			&i.PaymentRef,
+			&i.PaymentToken,
 			&i.Starts,
 			&i.Ends,
 			&i.IsManual,
 			&i.IsNotified,
+			&i.IsActive,
 			&i.CreatedAt,
 			&i.Username,
 			&i.FirstName,
@@ -205,27 +226,89 @@ func (q *Queries) GetManualSubscriptionsEndingTomorrow(ctx context.Context) ([]G
 	return items, nil
 }
 
-const getSubscriptionByPaypalID = `-- name: GetSubscriptionByPaypalID :one
-SELECT id, user_id, paypal_subscription_id, starts, ends, is_manual, is_notified, created_at FROM online.subscription
-WHERE paypal_subscription_id = $1
+const getSubscriptionByPaymentRef = `-- name: GetSubscriptionByPaymentRef :one
+SELECT id, user_id, payment_ref, payment_token, starts, ends, is_manual, is_notified, is_active, created_at FROM online.subscription
+WHERE payment_ref = $1
 ORDER BY id DESC
 LIMIT 1
 `
 
-func (q *Queries) GetSubscriptionByPaypalID(ctx context.Context, paypalSubscriptionID string) (OnlineSubscription, error) {
-	row := q.db.QueryRow(ctx, getSubscriptionByPaypalID, paypalSubscriptionID)
+func (q *Queries) GetSubscriptionByPaymentRef(ctx context.Context, paymentRef string) (OnlineSubscription, error) {
+	row := q.db.QueryRow(ctx, getSubscriptionByPaymentRef, paymentRef)
 	var i OnlineSubscription
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.PaypalSubscriptionID,
+		&i.PaymentRef,
+		&i.PaymentToken,
 		&i.Starts,
 		&i.Ends,
 		&i.IsManual,
 		&i.IsNotified,
+		&i.IsActive,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getSubscriptionsForRenewal = `-- name: GetSubscriptionsForRenewal :many
+SELECT s.id, s.user_id, s.payment_ref, s.payment_token, s.starts, s.ends, s.is_manual, s.is_notified, s.is_active, s.created_at, u.username, u.first_name, u.last_name
+FROM online.subscription s
+JOIN online."user" u ON s.user_id = u.id
+WHERE s.ends = CURRENT_DATE
+  AND s.is_active = true
+  AND s.is_manual = false
+  AND s.payment_token <> ''
+`
+
+type GetSubscriptionsForRenewalRow struct {
+	ID           int32
+	UserID       int64
+	PaymentRef   string
+	PaymentToken string
+	Starts       time.Time
+	Ends         time.Time
+	IsManual     bool
+	IsNotified   bool
+	IsActive     bool
+	CreatedAt    pgtype.Timestamp
+	Username     string
+	FirstName    string
+	LastName     string
+}
+
+func (q *Queries) GetSubscriptionsForRenewal(ctx context.Context) ([]GetSubscriptionsForRenewalRow, error) {
+	rows, err := q.db.Query(ctx, getSubscriptionsForRenewal)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSubscriptionsForRenewalRow
+	for rows.Next() {
+		var i GetSubscriptionsForRenewalRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.PaymentRef,
+			&i.PaymentToken,
+			&i.Starts,
+			&i.Ends,
+			&i.IsManual,
+			&i.IsNotified,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.Username,
+			&i.FirstName,
+			&i.LastName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getUser = `-- name: GetUser :one

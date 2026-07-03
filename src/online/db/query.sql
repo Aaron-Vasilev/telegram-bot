@@ -21,15 +21,15 @@ WHERE user_id = $1 AND ends >= CURRENT_DATE
 ORDER BY ends DESC
 LIMIT 1;
 
--- name: GetSubscriptionByPaypalID :one
+-- name: GetSubscriptionByPaymentRef :one
 SELECT * FROM online.subscription
-WHERE paypal_subscription_id = $1
+WHERE payment_ref = $1
 ORDER BY id DESC
 LIMIT 1;
 
 -- name: CreateSubscription :one
-INSERT INTO online.subscription (user_id, paypal_subscription_id, starts, ends, is_manual)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO online.subscription (user_id, payment_ref, payment_token, starts, ends, is_manual)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: ExtendSubscription :exec
@@ -41,6 +41,20 @@ WHERE id = $1;
 UPDATE online.subscription
 SET is_notified = true
 WHERE id = $1;
+
+-- name: DeactivateSubscription :exec
+UPDATE online.subscription
+SET is_active = false
+WHERE id = $1;
+
+-- name: GetSubscriptionsForRenewal :many
+SELECT s.*, u.username, u.first_name, u.last_name
+FROM online.subscription s
+JOIN online."user" u ON s.user_id = u.id
+WHERE s.ends = CURRENT_DATE
+  AND s.is_active = true
+  AND s.is_manual = false
+  AND s.payment_token <> '';
 
 -- name: GetManualSubscriptionsEndingTomorrow :many
 SELECT s.*, u.username, u.first_name, u.last_name

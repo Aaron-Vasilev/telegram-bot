@@ -11,14 +11,16 @@ import (
 )
 
 type OnlineSubscription struct {
-	ID                   int32
-	UserID               int64
-	PaypalSubscriptionID string
-	Starts               time.Time
-	Ends                 time.Time
-	IsManual             bool
-	IsNotified           bool
-	CreatedAt            pgtype.Timestamp
+	ID           int32
+	UserID       int64
+	PaymentRef   string
+	PaymentToken string
+	Starts       time.Time
+	Ends         time.Time
+	IsManual     bool
+	IsNotified   bool
+	IsActive     bool
+	CreatedAt    pgtype.Timestamp
 }
 
 type OnlineUser struct {

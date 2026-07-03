@@ -4,13 +4,13 @@ import (
 	"bot/src/bot"
 	"bot/src/common"
 	"bot/src/online/db"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -18,26 +18,17 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const subscriptionPriceILS = 100.0
+
 func StartSubscriptionServer(b *bot.Bot) {
-	b.Mux.HandleFunc("/api/online-config", onlineConfigHandler())
+	b.Mux.HandleFunc("/api/create-subscription", createSubscriptionHandler(b))
 	b.Mux.HandleFunc("/api/subscription-success", subscriptionSuccessHandler(b))
-	b.Mux.HandleFunc("/api/paypal-subscription", paypalSubscriptionWebhookHandler(b))
+	b.Mux.HandleFunc("/api/morning-webhook", morningWebhookHandler(b))
 
 	b.Mux.Handle("/online/", http.StripPrefix("/online", http.FileServer(http.Dir("pages/online"))))
 }
 
-func onlineConfigHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{
-			"clientId": os.Getenv("PAYPAL_CLIENT_ID"),
-			"planId":   os.Getenv("PAYPAL_ONLINE_PLAN_ID"),
-		})
-	}
-}
-
-func subscriptionSuccessHandler(b *bot.Bot) http.HandlerFunc {
+func createSubscriptionHandler(b *bot.Bot) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
@@ -57,11 +48,9 @@ func subscriptionSuccessHandler(b *bot.Bot) http.HandlerFunc {
 			return
 		}
 
-		subscriptionID := r.FormValue("subscription_id")
 		telegramUserID := r.FormValue("telegram_user_id")
-
-		if subscriptionID == "" || telegramUserID == "" {
-			http.Error(w, "missing subscription_id or telegram_user_id", http.StatusBadRequest)
+		if telegramUserID == "" {
+			http.Error(w, "missing telegram_user_id", http.StatusBadRequest)
 			return
 		}
 
@@ -71,36 +60,82 @@ func subscriptionSuccessHandler(b *bot.Bot) http.HandlerFunc {
 			return
 		}
 
-		result, err := fetchPaypalSubscription(subscriptionID)
+		userName := telegramUserID
+		if user, err := db.Query.GetUser(b.Ctx, tgUserId); err == nil {
+			userName = strings.TrimSpace(user.FirstName + " " + user.LastName)
+		}
+
+		url, err := createMorningPaymentForm(morningFormRequest{
+			description: "Yoletta Online — monthly subscription",
+			amount:      subscriptionPriceILS,
+			clientName:  userName,
+			custom:      telegramUserID,
+			successPath: "/api/subscription-success",
+			failurePath: "/online/?failed=1",
+			saveToken:   true,
+		})
 		if err != nil {
-			b.Error("paypal fetch subscription: " + err.Error())
-			http.Error(w, "verification failed", http.StatusInternalServerError)
+			b.Error("morning create subscription form: " + err.Error())
+			http.Error(w, "failed to create subscription", http.StatusInternalServerError)
 			return
 		}
 
-		if result.Status != "ACTIVE" && result.Status != "APPROVED" {
-			b.Error(fmt.Sprintf("subscription-success: unexpected status %s for %s", result.Status, subscriptionID))
-			http.Error(w, "subscription not active", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"redirect_url": url})
+	}
+}
+
+func subscriptionSuccessHandler(b *bot.Bot) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		paymentID := r.URL.Query().Get("id")
+		if paymentID == "" {
+			http.Error(w, "missing id", http.StatusBadRequest)
 			return
 		}
 
-		if err := activateSubscription(b, tgUserId, subscriptionID); err != nil {
+		payment, err := fetchMorningPayment(paymentID)
+		if err != nil {
+			b.Error("morning fetch subscription: " + err.Error())
+			http.Error(w, "verify failed", http.StatusInternalServerError)
+			return
+		}
+
+		if payment.Status != morningPaymentSuccess {
+			b.Error(fmt.Sprintf("subscription-success: unexpected status %d for %s", payment.Status, paymentID))
+			http.Error(w, "payment not successful", http.StatusBadRequest)
+			return
+		}
+
+		tgUserId, err := strconv.ParseInt(payment.Custom, 10, 64)
+		if err != nil {
+			b.Error("subscription-success: bad custom " + payment.Custom)
+			http.Error(w, "malformed custom", http.StatusBadRequest)
+			return
+		}
+
+		if err := activateSubscription(b, tgUserId, payment.ID, payment.CardToken); err != nil {
 			b.Error("activateSubscription: " + err.Error())
 			http.Error(w, "activation failed", http.StatusInternalServerError)
 			return
 		}
 
 		b.SendHTML(common.AdminChatID(), fmt.Sprintf(
-			"✅ Online subscription activated!\n%s\nPayPal sub: <code>%s</code>",
-			formatUser(b, tgUserId), subscriptionID,
+			"✅ Online subscription activated!\n%s\nMorning payment: <code>%s</code>",
+			formatUser(b, tgUserId), payment.ID,
 		))
 
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"ok":true}`))
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprint(w, `<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px;margin-top:50%">
+<h1>✅ Subscription activated!</h1><p>See you on the mat 🧘</p></body></html>`)
 	}
 }
 
-func paypalSubscriptionWebhookHandler(b *bot.Bot) http.HandlerFunc {
+type morningEvent struct {
+	Type    string         `json:"type"`
+	Payment morningPayment `json:"payment"`
+}
+
+func morningWebhookHandler(b *bot.Bot) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -112,28 +147,18 @@ func paypalSubscriptionWebhookHandler(b *bot.Bot) http.HandlerFunc {
 			http.Error(w, "read error", http.StatusInternalServerError)
 			return
 		}
+		log.Printf("morning webhook: %s", body)
 
-		if !verifyPaypalWebhook(r, body) {
-			http.Error(w, "invalid signature", http.StatusUnauthorized)
-			return
-		}
-
-		var event paypalEvent
+		var event morningEvent
 		if err := json.Unmarshal(body, &event); err != nil {
 			http.Error(w, "invalid json", http.StatusBadRequest)
 			return
 		}
 
-		switch event.EventType {
-		case "PAYMENT.SALE.COMPLETED":
-			if err := handleRecurringPayment(b, event.Resource); err != nil {
-				b.Error("recurring payment: " + err.Error())
-			}
-		case "BILLING.SUBSCRIPTION.CANCELLED", "BILLING.SUBSCRIPTION.EXPIRED", "BILLING.SUBSCRIPTION.SUSPENDED":
-			subId := stringField(event.Resource, "id")
+		if event.Payment.Status != morningPaymentSuccess && event.Payment.Status != 0 {
 			b.SendHTML(common.AdminChatID(), fmt.Sprintf(
-				"⚠️ PayPal sub %s: <code>%s</code>",
-				event.EventType, subId,
+				"❌ Morning payment failed: <code>%s</code> status=%d",
+				event.Payment.ID, event.Payment.Status,
 			))
 		}
 
@@ -154,44 +179,10 @@ func formatUser(b *bot.Bot, userID int64) string {
 	return fmt.Sprintf("<b>%s</b> (ID: <code>%d</code>)", name, userID)
 }
 
-type subscriptionResult struct {
-	ID       string
-	Status   string
-	CustomID string
-}
-
-func fetchPaypalSubscription(subscriptionID string) (subscriptionResult, error) {
-	token, err := getPaypalToken()
-	if err != nil {
-		return subscriptionResult{}, err
-	}
-
-	req, _ := http.NewRequest(http.MethodGet, paypalBase()+"/v1/billing/subscriptions/"+subscriptionID, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return subscriptionResult{}, err
-	}
-	defer resp.Body.Close()
-
-	raw, _ := io.ReadAll(resp.Body)
-	log.Printf("paypal subscription fetch: %s", raw)
-
-	var body map[string]any
-	json.Unmarshal(raw, &body)
-
-	return subscriptionResult{
-		ID:       stringField(body, "id"),
-		Status:   stringField(body, "status"),
-		CustomID: stringField(body, "custom_id"),
-	}, nil
-}
-
-func activateSubscription(b *bot.Bot, userID int64, paypalSubID string) error {
-	existing, err := db.Query.GetSubscriptionByPaypalID(b.Ctx, paypalSubID)
+func activateSubscription(b *bot.Bot, userID int64, paymentRef, cardToken string) error {
+	existing, err := db.Query.GetSubscriptionByPaymentRef(b.Ctx, paymentRef)
 	if err == nil {
-		log.Printf("subscription %s already exists (id=%d), skipping", paypalSubID, existing.ID)
+		log.Printf("subscription %s already exists (id=%d), skipping", paymentRef, existing.ID)
 		return nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -209,24 +200,55 @@ func activateSubscription(b *bot.Bot, userID int64, paypalSubID string) error {
 	ends := starts.AddDate(0, 1, 0)
 
 	_, err = db.Query.CreateSubscription(b.Ctx, db.CreateSubscriptionParams{
-		UserID:               userID,
-		PaypalSubscriptionID: paypalSubID,
-		Starts:               starts,
-		Ends:                 ends,
-		IsManual:             false,
+		UserID:       userID,
+		PaymentRef:   paymentRef,
+		PaymentToken: cardToken,
+		Starts:       starts,
+		Ends:         ends,
+		IsManual:     false,
 	})
 	return err
 }
 
-func handleRecurringPayment(b *bot.Bot, resource map[string]any) error {
-	paypalSubID := stringField(resource, "billing_agreement_id")
-	if paypalSubID == "" {
-		return fmt.Errorf("missing billing_agreement_id")
+// RenewAllDueSubscriptions charges every subscription ending today with a saved card token.
+func RenewAllDueSubscriptions(b *bot.Bot) {
+	subs, err := db.Query.GetSubscriptionsForRenewal(b.Ctx)
+	if err != nil {
+		b.Error("get subs for renewal: " + err.Error())
+		return
+	}
+	for _, sub := range subs {
+		if err := RenewSubscription(b, sub); err != nil {
+			log.Printf("renew sub %d: %v", sub.ID, err)
+		}
+	}
+}
+
+// RenewSubscription charges the saved Morning card token and extends the sub.
+// Called by cron for subs whose `ends = CURRENT_DATE`.
+func RenewSubscription(b *bot.Bot, sub db.GetSubscriptionsForRenewalRow) error {
+	if sub.PaymentToken == "" {
+		return fmt.Errorf("sub %d: no payment token", sub.ID)
 	}
 
-	sub, err := db.Query.GetSubscriptionByPaypalID(b.Ctx, paypalSubID)
+	name := strings.TrimSpace(sub.FirstName + " " + sub.LastName)
+	newRef, err := chargeMorningToken(morningChargeRequest{
+		token:       sub.PaymentToken,
+		description: "Yoletta Online — monthly renewal",
+		amount:      subscriptionPriceILS,
+		clientName:  name,
+		custom:      strconv.FormatInt(sub.UserID, 10),
+	})
 	if err != nil {
-		return fmt.Errorf("lookup sub %s: %w", paypalSubID, err)
+		if dbErr := db.Query.DeactivateSubscription(b.Ctx, sub.ID); dbErr != nil {
+			b.Error("deactivate after charge fail: " + dbErr.Error())
+		}
+		b.SendHTML(sub.UserID, "❌ Не удалось продлить подписку автоматически. Обнови оплату через бота.")
+		b.SendHTML(common.AdminChatID(), fmt.Sprintf(
+			"⚠️ Auto-renew failed for user <code>%d</code>: %s",
+			sub.UserID, err.Error(),
+		))
+		return err
 	}
 
 	newEnds := sub.Ends
@@ -247,8 +269,69 @@ func handleRecurringPayment(b *bot.Bot, resource map[string]any) error {
 		newEnds.Format("02-01-06"),
 	))
 	b.SendHTML(common.AdminChatID(), fmt.Sprintf(
-		"🔄 Auto-renewal: user <code>%d</code> extended to %s",
-		sub.UserID, newEnds.Format("02-01-06"),
+		"🔄 Auto-renewal: user <code>%d</code> extended to %s (payment <code>%s</code>)",
+		sub.UserID, newEnds.Format("02-01-06"), newRef,
 	))
 	return nil
+}
+
+type morningChargeRequest struct {
+	token       string
+	description string
+	amount      float64
+	clientName  string
+	custom      string
+}
+
+// chargeMorningToken hits Morning's tokenized charge endpoint using a previously saved card token.
+// Returns the new payment ID.
+func chargeMorningToken(req morningChargeRequest) (string, error) {
+	token, err := getMorningToken()
+	if err != nil {
+		return "", err
+	}
+
+	body := map[string]any{
+		"description": req.description,
+		"type":        400,
+		"lang":        "he",
+		"currency":    "ILS",
+		"vatType":     0,
+		"amount":      req.amount,
+		"maxPayments": 1,
+		"cardToken":   req.token,
+		"client":      map[string]any{"name": req.clientName},
+		"custom":      req.custom,
+	}
+
+	data, _ := json.Marshal(body)
+	httpReq, _ := http.NewRequest(http.MethodPost, morningBase()+"/payments/charge", bytes.NewBuffer(data))
+	httpReq.Header.Set("Authorization", "Bearer "+token)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	raw, _ := io.ReadAll(resp.Body)
+	log.Printf("morning charge: %s", raw)
+
+	if resp.StatusCode >= 300 {
+		return "", fmt.Errorf("morning charge: status %d: %s", resp.StatusCode, raw)
+	}
+
+	var result struct {
+		ID     string `json:"id"`
+		Status int    `json:"status"`
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return "", err
+	}
+
+	if result.Status != morningPaymentSuccess {
+		return "", fmt.Errorf("morning charge: unexpected status %d", result.Status)
+	}
+	return result.ID, nil
 }

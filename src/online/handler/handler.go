@@ -124,7 +124,7 @@ func sendSubscriptionInfo(bot *bot.Bot, userId int64) {
 }
 
 func sendPurchaseLink(bot *bot.Bot, userId int64) {
-	base := os.Getenv("PAYPAL_WEBHOOK_URL")
+	base := os.Getenv("PUBLIC_BASE_URL")
 	url := fmt.Sprintf("%s/online/?telegram_user_id=%d", base, userId)
 
 	bot.SendMessage(t.Message{

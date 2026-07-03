@@ -195,7 +195,7 @@ button[type="submit"]:disabled { opacity: 0.7; cursor: not-allowed; transform: n
 .status-message.success { color: var(--accent-dark); }
 .status-message.error { color: #b04a4a; }
 
-#paypal-button-container {
+#subscribe-container {
   margin-top: 8px;
   min-height: 45px;
 }

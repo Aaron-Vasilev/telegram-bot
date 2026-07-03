@@ -31,60 +31,44 @@ function setStatus(text, type) {
   status.className = 'status-message' + (type ? ' ' + type : '')
 }
 
-async function boot() {
+function renderButton() {
+  const container = document.getElementById('subscribe-container')
+  container.innerHTML = ''
+
+  const btn = document.createElement('button')
+  btn.textContent = 'Subscribe — 100₪/month'
+  btn.className = 'subscribe-btn'
+  btn.addEventListener('click', startCheckout)
+  container.appendChild(btn)
+}
+
+async function startCheckout() {
   if (!telegramUserId) {
     setStatus('Open this page through Telegram to subscribe.', 'error')
     return
   }
 
-  let config
+  setStatus('Redirecting to payment…')
   try {
-    const res = await fetch('/api/online-config')
-    if (!res.ok) throw new Error(`config ${res.status}`)
-    config = await res.json()
+    const res = await fetch('/api/create-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ telegram_user_id: telegramUserId }),
+    })
+    if (!res.ok) throw new Error(`create ${res.status}`)
+    const data = await res.json()
+    if (data.redirect_url) {
+      window.location.href = data.redirect_url
+    } else {
+      throw new Error('no redirect_url')
+    }
   } catch (e) {
-    setStatus('Could not load payment options. Please try again later.', 'error')
-    return
+    setStatus('Could not start checkout. Please try again.', 'error')
   }
-
-  if (!config.clientId || !config.planId) {
-    setStatus('Payment not configured. Contact admin.', 'error')
-    return
-  }
-
-  const sdk = document.createElement('script')
-  sdk.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(config.clientId)}&vault=true&intent=subscription`
-  sdk.onload = () => renderButton(config.planId)
-  sdk.onerror = () => setStatus('PayPal failed to load.', 'error')
-  document.head.appendChild(sdk)
 }
 
-function renderButton(planId) {
-  window.paypal.Buttons({
-    style: { shape: 'pill', color: 'blue', layout: 'vertical', label: 'subscribe' },
-    createSubscription: (_data, actions) => actions.subscription.create({
-      plan_id: planId,
-      custom_id: telegramUserId,
-    }),
-    onApprove: async (data) => {
-      setStatus('Activating your subscription…')
-      try {
-        const res = await fetch('/api/subscription-success', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            subscription_id: data.subscriptionID,
-            telegram_user_id: telegramUserId,
-          }),
-        })
-        if (!res.ok) throw new Error(`activate ${res.status}`)
-        setStatus('✅ Subscription activated! See you on the mat 🧘', 'success')
-      } catch (e) {
-        setStatus('Payment received but activation failed. Contact @vialettochka.', 'error')
-      }
-    },
-    onError: () => setStatus('Something went wrong. Please try again.', 'error'),
-  }).render('#paypal-button-container')
-}
+renderButton()
 
-boot()
+if (urlParams.get('failed')) {
+  setStatus('Payment was not completed. Please try again.', 'error')
+}
