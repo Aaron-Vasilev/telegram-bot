@@ -5,6 +5,7 @@ import (
 	"bot/src/cron"
 	"bot/src/db"
 	"bot/src/handler"
+	onlinedb "bot/src/online/db"
 	"bot/src/payment"
 	"bot/src/utils"
 	"fmt"
@@ -28,6 +29,9 @@ func main() {
 	if bot.IsProd {
 		bot.StartWebhook(handler.HandleUpdate)
 	} else {
+		onlineConn := onlinedb.ConnectDB(bot)
+		defer onlineConn.Close(bot.Ctx)
+
 		bot.StartHTTPServer()
 		bot.StartLongPulling(handler.HandleUpdates)
 	}

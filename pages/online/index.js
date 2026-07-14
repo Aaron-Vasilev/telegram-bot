@@ -36,7 +36,7 @@ function renderButton() {
   container.innerHTML = ''
 
   const btn = document.createElement('button')
-  btn.textContent = 'Subscribe — 100₪/month'
+  btn.textContent = 'Subscribe — 111₪/month'
   btn.className = 'subscribe-btn'
   btn.addEventListener('click', startCheckout)
   container.appendChild(btn)

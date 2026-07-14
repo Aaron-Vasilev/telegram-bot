@@ -18,7 +18,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const subscriptionPriceILS = 100.0
+const subscriptionPriceILS = 111.0
 
 func StartSubscriptionServer(b *bot.Bot) {
 	b.Mux.HandleFunc("/api/create-subscription", createSubscriptionHandler(b))
