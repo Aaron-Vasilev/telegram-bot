@@ -126,3 +126,6 @@ DO UPDATE SET
 
 -- name: DecLessonsAvaliable :exec
 UPDATE yoga.membership SET lessons_avaliable = lessons_avaliable - 1 WHERE user_id=$1;
+
+-- name: GetUsersAttendanceCounts :many
+SELECT COUNT(user_id), user_id FROM yoga.attendance WHERE user_id = ANY($1::bigint[]) GROUP BY user_id;                                             

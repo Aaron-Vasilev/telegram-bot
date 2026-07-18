@@ -37,17 +37,18 @@ func Start(b *bot.Bot, u t.Update, scene string) {
 }
 
 type signStudentsData struct {
-	Data  db.GetRegisteredOnLessonRow
-	Index int
+	RegisteredOnLesson    db.GetRegisteredOnLessonRow
+	Index                 int
+	UsersAttendanceCounts []db.GetUsersAttendanceCountsRow
 }
 
 func SignStudents(bot *bot.Bot, u t.Update) {
-	userId, _ := utils.UserIdFromUpdate(u)
-	state, ok := bot.GetCtxValue(userId)
+	adminId, _ := utils.UserIdFromUpdate(u)
+	state, ok := bot.GetCtxValue(adminId)
 
 	if !ok {
-		bot.Error(fmt.Sprintf("No scene for the user: %d", userId))
-		bot.EndCtx(userId)
+		bot.Error(fmt.Sprintf("No scene for the user: %d", adminId))
+		bot.EndCtx(adminId)
 	}
 
 	switch state.Stage {
@@ -55,110 +56,123 @@ func SignStudents(bot *bot.Bot, u t.Update) {
 		lessons, err := db.Query.GetLatestLessons(bot.Ctx, 12)
 
 		if err != nil {
-			bot.SendText(userId, utils.WrongMsg)
-			bot.EndCtx(userId)
+			bot.SendText(adminId, utils.WrongMsg)
+			bot.EndCtx(adminId)
 			bot.Error("get avaliable lessons error: " + err.Error())
 		}
 
 		msg := utils.GenerateTimetableMsg(lessons, true)
-		msg.ChatId = userId
+		msg.ChatId = adminId
 		msg.Text = "Send back the <b>ID</b> of the lesson you want to sign students for"
 		msg.ParseMode = "html"
 		bot.SendMessage(msg)
 	case 2:
 		if u.Message == nil {
-			bot.SendHTML(userId, "You must send an <b>ID</b>")
-			bot.EndCtx(userId)
+			bot.SendHTML(adminId, "You must send an <b>ID</b>")
+			bot.EndCtx(adminId)
 			return
 		}
 		lessonId, err := strconv.Atoi(u.Message.Text)
 
 		if err != nil {
-			bot.SendText(userId, utils.NotANumberMsg)
-			bot.EndCtx(userId)
+			bot.SendText(adminId, utils.NotANumberMsg)
+			bot.EndCtx(adminId)
 			return
 		}
 
 		wasLessonSigned := controller.IsLessonSigned(bot.Ctx, lessonId)
 
 		if wasLessonSigned {
-			bot.SendText(userId, "This lesson was signed⚠️")
+			bot.SendText(adminId, "This lesson was signed⚠️")
 		}
 
 		registered, err := db.Query.GetRegisteredOnLesson(bot.Ctx, lessonId)
 
 		if err != nil {
 			bot.Error("Error getRegisteredOnLesson: " + err.Error())
-			bot.EndCtx(userId)
+			bot.EndCtx(adminId)
 			return
 		}
 
 		if len(registered.Registered) == 0 {
-			bot.SendText(userId, "There are no users on this lesson")
-			bot.EndCtx(userId)
+			bot.SendText(adminId, "There are no users on this lesson")
+			bot.EndCtx(adminId)
 			return
 		}
-		state.Data = signStudentsData{
-			Data:  registered,
-			Index: 0,
+
+		usersAttendanceCounts, err := db.Query.GetUsersAttendanceCounts(bot.Ctx, registered.Registered)
+
+		if err != nil {
+			bot.Error("Error get users attendance: " + err.Error())
+			bot.EndCtx(adminId)
+			return
 		}
 
-		bot.SetCtxValue(userId, state)
+		state.Data = signStudentsData{
+			RegisteredOnLesson:    registered,
+			Index:                 0,
+			UsersAttendanceCounts: usersAttendanceCounts,
+		}
+
+		bot.SetCtxValue(adminId, state)
 
 		userWithMem, err := db.Query.GetUserWithMembership(bot.Ctx, registered.Registered[0])
 
 		if err != nil {
-			bot.SendText(userId, "The ID is not correct")
-			bot.EndCtx(userId)
+			bot.SendText(adminId, "The ID is not correct")
+			bot.EndCtx(adminId)
 			return
 		}
 
-		bot.SendHTML(userId, utils.UserMemText(userWithMem))
+		bot.SendHTML(adminId, utils.UserMemText(userWithMem))
 	case 3:
 		data, ok := state.Data.(signStudentsData)
-		userIds := data.Data.Registered
+		userIds := data.RegisteredOnLesson.Registered
 		currIndex := data.Index
 
 		if u.Message == nil || !ok || currIndex >= len(userIds) {
-			bot.SendText(userId, utils.WrongMsg)
-			bot.EndCtx(userId)
+			bot.SendText(adminId, utils.WrongMsg)
+			bot.EndCtx(adminId)
 			return
 		}
 
 		if u.Message.Text == "Y" {
+			currUserId := userIds[currIndex]
+
 			db.Query.AddAttendance(bot.Ctx, db.AddAttendanceParams{
-				UserID:   userIds[currIndex],
-				LessonID: data.Data.LessonID,
-				Date:     data.Data.Date,
+				UserID:   currUserId,
+				LessonID: data.RegisteredOnLesson.LessonID,
+				Date:     data.RegisteredOnLesson.Date,
 			})
-			db.Query.DecLessonsAvaliable(bot.Ctx, userIds[currIndex])
+			db.Query.DecLessonsAvaliable(bot.Ctx, currUserId)
+			controller.NotifyUserAboutAttendance(bot, data.UsersAttendanceCounts, currUserId)
 		}
 
 		currIndex++
 		if currIndex >= len(userIds) {
-			bot.SendHTML(userId, fmt.Sprintf("Good job!\nThe lesson ID: <b>%d</b>", data.Data.LessonID))
-			bot.EndCtx(userId)
+			bot.SendHTML(adminId, fmt.Sprintf("Good job!\nThe lesson ID: <b>%d</b>", data.RegisteredOnLesson.LessonID))
+			bot.EndCtx(adminId)
 			return
 		}
 
 		userWithMem, err := db.Query.GetUserWithMembership(bot.Ctx, userIds[currIndex])
 
 		if err != nil {
-			bot.SendText(userId, "Internal error. Text anything to continue")
+			bot.SendText(adminId, "Internal error. Text anything to continue")
 			bot.Error("Sign students get user with membership err: " + err.Error())
 		} else {
-			bot.SendHTML(userId, utils.UserMemText(userWithMem))
+			bot.SendHTML(adminId, utils.UserMemText(userWithMem))
 		}
 
 		data.Index = currIndex
 		state.Data = data
 
-		bot.SetCtxValue(userId, state)
+		bot.SetCtxValue(adminId, state)
 
 		return
 	}
 
-	bot.NextCtx(userId)
+	bot.NextCtx(adminId)
 }
 
 func ChangeEmoji(bot *bot.Bot, u t.Update) {

@@ -1,11 +1,14 @@
 package controller
 
 import (
+	"bot/src/bot"
 	"bot/src/db"
 	"bot/src/utils"
 	t "bot/src/utils/types"
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"time"
 )
 
@@ -86,3 +89,28 @@ func IsLessonSigned(c context.Context, lessonId int) bool {
 		return true
 	}
 }
+
+func NotifyUserAboutAttendance(
+	bot *bot.Bot,
+	counts []db.GetUsersAttendanceCountsRow,
+	userId int64,
+) {
+
+	i := slices.IndexFunc(counts, func(attendance db.GetUsersAttendanceCountsRow) bool {
+		return attendance.UserID == userId
+	})
+
+	if i == -1 {
+		return
+	}
+
+	currLessonNum := counts[i].Count + 1
+
+	if currLessonNum%5 == 0 {
+		bot.SendHTML(
+			userId,
+			fmt.Sprintf("The last yoga lesson was your <b>%d</b>th\nKeep going ( ◡̀_◡́)ᕤ", currLessonNum),
+		)
+	}
+}
+

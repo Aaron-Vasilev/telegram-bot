@@ -495,6 +495,35 @@ func (q *Queries) GetUsersAttandance(ctx context.Context, arg GetUsersAttandance
 	return items, nil
 }
 
+const getUsersAttendanceCounts = `-- name: GetUsersAttendanceCounts :many
+SELECT COUNT(user_id), user_id FROM yoga.attendance WHERE user_id = ANY($1::bigint[]) GROUP BY user_id
+`
+
+type GetUsersAttendanceCountsRow struct {
+	Count  int64
+	UserID int64
+}
+
+func (q *Queries) GetUsersAttendanceCounts(ctx context.Context, dollar_1 []int64) ([]GetUsersAttendanceCountsRow, error) {
+	rows, err := q.db.Query(ctx, getUsersAttendanceCounts, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUsersAttendanceCountsRow
+	for rows.Next() {
+		var i GetUsersAttendanceCountsRow
+		if err := rows.Scan(&i.Count, &i.UserID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUsersIDs = `-- name: GetUsersIDs :many
 SELECT id FROM yoga.user WHERE is_blocked = false
 `
