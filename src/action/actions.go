@@ -230,14 +230,14 @@ func RegisterForLesson(bot *bot.Bot, u t.Update) {
 }
 
 func SendHowToFind(bot *bot.Bot, u t.Update) {
-	bot.SendLocation(u.FromChat().ID, 32.049336, 34.752160)
+	bot.SendLocation(u.FromChat().ID, 32.045494, 34.751706)
 
 	media := []t.InputMediaPhoto{
 		{
 			BaseInputMedia: t.BaseInputMedia{
 				Type:    "photo",
 				Media:   "https://bot-telega.s3.il-central-1.amazonaws.com/entrence.jpg",
-				Caption: "Пожалуйста не смотрите в окна🪟❌👀 к нашим соседям, они оченьстесняются🫣",
+				Caption: "First floor, door opposite the elevator🛗",
 			},
 		},
 		{
