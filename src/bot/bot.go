@@ -175,7 +175,7 @@ func Send[T any](bot *Bot, method string, obj T) ([]byte, error) {
 	)
 
 	if err != nil {
-		bot.Error("Error making the request:" + err.Error())
+		bot.Error("Error making send:" + err.Error())
 		return nil, err
 	}
 	defer res.Body.Close()
@@ -217,7 +217,7 @@ func Call[T any](bot *Bot, method string) T {
 	res, err := http.Get("https://api.telegram.org/bot" + bot.Token + method)
 
 	if err != nil {
-		bot.Error("Error making the request: " + err.Error())
+		bot.Error("Error making call: " + err.Error())
 	}
 	defer res.Body.Close()
 

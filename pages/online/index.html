@@ -21,6 +21,41 @@
         cursor: pointer;
       }
       .subscribe-btn:hover { background: #1666c7; }
+      .subscribe-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+      .customer-form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 8px;
+      }
+      .customer-form input[type="text"],
+      .customer-form input[type="tel"] {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1.5px solid var(--border, #e8e4de);
+        border-radius: 12px;
+        font-size: 1rem;
+        font-family: inherit;
+      }
+      .terms-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: var(--text-muted, #8a8278);
+        line-height: 1.4;
+        margin-top: 4px;
+      }
+      .terms-row input { margin-top: 3px; }
+      .terms-row a { color: inherit; text-decoration: underline; }
+      .site-footer {
+        margin-top: 32px;
+        text-align: center;
+        font-size: 0.8rem;
+        color: var(--text-muted, #8a8278);
+        line-height: 1.6;
+      }
+      .site-footer a { color: inherit; }
     </style>
   </head>
   <body>
@@ -46,8 +81,22 @@
         </div>
       </div>
 
-      <div id="subscribe-container"></div>
+      <form id="customer-form" class="customer-form">
+        <input type="text" id="customer-name" name="customer-name" placeholder="Full name" autocomplete="name" required>
+        <input type="tel" id="customer-phone" name="customer-phone" placeholder="Phone number" autocomplete="tel" required>
+        <label class="terms-row">
+          <input type="checkbox" id="terms-agree" required>
+          <span>I agree to the <a href="/online/terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a></span>
+        </label>
+        <div id="subscribe-container"></div>
+      </form>
       <p id="status-message" class="status-message"></p>
+
+      <footer class="site-footer">
+        <p>Contact: <a href="tel:+972534257328">+972 53-425-7328</a></p>
+        <p>Tel-Aviv Jaffa, Ha-Kharuv 23</p>
+        <p><a href="/online/terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a></p>
+      </footer>
     </main>
     <script src="/online/index.js"></script>
   </body>

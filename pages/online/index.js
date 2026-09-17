@@ -36,15 +36,34 @@ function renderButton() {
   container.innerHTML = ''
 
   const btn = document.createElement('button')
+  btn.type = 'submit'
   btn.textContent = 'Subscribe — 111₪/month'
   btn.className = 'subscribe-btn'
-  btn.addEventListener('click', startCheckout)
   container.appendChild(btn)
 }
+
+const customerForm = document.getElementById('customer-form')
+customerForm.addEventListener('submit', (e) => {
+  e.preventDefault()
+  startCheckout()
+})
 
 async function startCheckout() {
   if (!telegramUserId) {
     setStatus('Open this page through Telegram to subscribe.', 'error')
+    return
+  }
+
+  const customerName = document.getElementById('customer-name').value.trim()
+  const customerPhone = document.getElementById('customer-phone').value.trim()
+  const termsAgreed = document.getElementById('terms-agree').checked
+
+  if (!customerName || !customerPhone) {
+    setStatus('Please fill in your name and phone number.', 'error')
+    return
+  }
+  if (!termsAgreed) {
+    setStatus('Please agree to the Terms & Conditions.', 'error')
     return
   }
 
@@ -53,7 +72,11 @@ async function startCheckout() {
     const res = await fetch('/api/create-subscription', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ telegram_user_id: telegramUserId }),
+      body: new URLSearchParams({
+        telegram_user_id: telegramUserId,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+      }),
     })
     if (!res.ok) throw new Error(`create ${res.status}`)
     const data = await res.json()

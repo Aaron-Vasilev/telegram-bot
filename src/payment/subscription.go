@@ -60,9 +60,12 @@ func createSubscriptionHandler(b *bot.Bot) http.HandlerFunc {
 			return
 		}
 
-		userName := telegramUserID
-		if user, err := db.Query.GetUser(b.Ctx, tgUserId); err == nil {
-			userName = strings.TrimSpace(user.FirstName + " " + user.LastName)
+		userName := r.FormValue("customer_name")
+		if userName == "" {
+			userName = telegramUserID
+			if user, err := db.Query.GetUser(b.Ctx, tgUserId); err == nil {
+				userName = strings.TrimSpace(user.FirstName + " " + user.LastName)
+			}
 		}
 
 		url, err := createMorningPaymentForm(morningFormRequest{
