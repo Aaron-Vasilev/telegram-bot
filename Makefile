@@ -6,7 +6,7 @@ format:
 	@gofmt -w .
 start:
 	@supervisord -c ./supervisord.conf
-restart:
+relaunch:
 	@go build -o ./tmp/bot ./src/main.go
 	@echo Build ends
 	@sudo supervisorctl restart bot
@@ -22,7 +22,7 @@ pizda:
 	go run ./src/pizda/main.go
 pizda_build:
 	 @go build -o ./tmp/pizda ./src/pizda/main.go
-pizda_restart:
+pizda_relaunch:
 	@git pull
 	@go build -o ./tmp/pizda ./src/pizda/main.go
 	@echo Build ends
@@ -35,7 +35,7 @@ online:
 	go run ./src/online/main.go
 online_build:
 	 @go build -o ./tmp/online ./src/online/main.go
-online_restart:
+online_relaunch:
 	@git pull
 	@go build -o ./tmp/online ./src/online/main.go
 	@echo Build ends
