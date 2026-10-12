@@ -379,6 +379,12 @@ func sendPrices(bot *bot.Bot, chatId int64) {
 					ParseMode: "html",
 				},
 			},
+			{
+				BaseInputMedia: t.BaseInputMedia{
+					Type:  "photo",
+					Media: "https://bot-telega.s3.il-central-1.amazonaws.com/pizda/plan_2.jpg",
+				},
+			},
 		},
 	}
 	bot.SendMediaGroup(msg)
