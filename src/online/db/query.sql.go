@@ -137,6 +137,23 @@ func (q *Queries) GetActiveSubscription(ctx context.Context, userID int64) (Onli
 	return i, err
 }
 
+const getCustomerPayment = `-- name: GetCustomerPayment :one
+SELECT user_id FROM online.customer_payment
+WHERE provider = $1 AND external_id = $2
+`
+
+type GetCustomerPaymentParams struct {
+	Provider   OnlinePaymentProvider
+	ExternalID string
+}
+
+func (q *Queries) GetCustomerPayment(ctx context.Context, arg GetCustomerPaymentParams) (int64, error) {
+	row := q.db.QueryRow(ctx, getCustomerPayment, arg.Provider, arg.ExternalID)
+	var user_id int64
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
 const getExpiredUsers = `-- name: GetExpiredUsers :many
 SELECT u.id
 FROM online."user" u
@@ -336,6 +353,24 @@ WHERE id = $1
 
 func (q *Queries) MarkSubscriptionNotified(ctx context.Context, id int32) error {
 	_, err := q.db.Exec(ctx, markSubscriptionNotified, id)
+	return err
+}
+
+const upsertCustomerPayment = `-- name: UpsertCustomerPayment :exec
+INSERT INTO online.customer_payment (provider, external_id, user_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (provider, external_id) DO UPDATE
+SET user_id = EXCLUDED.user_id
+`
+
+type UpsertCustomerPaymentParams struct {
+	Provider   OnlinePaymentProvider
+	ExternalID string
+	UserID     int64
+}
+
+func (q *Queries) UpsertCustomerPayment(ctx context.Context, arg UpsertCustomerPaymentParams) error {
+	_, err := q.db.Exec(ctx, upsertCustomerPayment, arg.Provider, arg.ExternalID, arg.UserID)
 	return err
 }
 

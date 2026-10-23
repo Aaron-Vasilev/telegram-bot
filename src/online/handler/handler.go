@@ -5,12 +5,12 @@ import (
 	"bot/src/common"
 	"bot/src/online/commands"
 	"bot/src/online/db"
+	"bot/src/online/payment"
 	cnst "bot/src/online/utils/const"
 	"bot/src/utils"
 	t "bot/src/utils/types"
 	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 
@@ -60,6 +60,11 @@ func HandleUpdates(bot *bot.Bot, updates []t.Update) {
 
 func handleMenu(bot *bot.Bot, u t.Update) {
 	commands.Start(bot, u)
+
+	// t.me/<bot>?start=pay from the payment page on the site
+	if u.Message != nil && u.Message.Text == "/start pay" {
+		sendPurchaseLink(bot, u.Message.From.ID)
+	}
 }
 
 func handleKeyboard(bot *bot.Bot, u t.Update) {
@@ -124,16 +129,24 @@ func sendSubscriptionInfo(bot *bot.Bot, userId int64) {
 }
 
 func sendPurchaseLink(bot *bot.Bot, userId int64) {
-	base := os.Getenv("PUBLIC_BASE_URL")
-	url := fmt.Sprintf("%s/online/?telegram_user_id=%d", base, userId)
+	var buttons [][]t.InlineKeyboardButton
+	for _, p := range payment.Providers() {
+		link, err := p.PaymentLink(userId)
+		if err != nil {
+			bot.Error(string(p.Name()) + " payment link: " + err.Error())
+			continue
+		}
+		buttons = append(buttons, []t.InlineKeyboardButton{{Text: p.Button(), URL: &link}})
+	}
+
+	if len(buttons) == 0 {
+		bot.SendText(userId, cnst.ErrorMsg)
+		return
+	}
 
 	bot.SendMessage(t.Message{
-		ChatId: userId,
-		Text:   "Открой страницу оплаты, чтобы оформить подписку 👇",
-		ReplyMarkup: &t.InlineKeyboardMarkup{
-			InlineKeyboard: [][]t.InlineKeyboardButton{
-				{{Text: cnst.Purchase, URL: &url}},
-			},
-		},
+		ChatId:      userId,
+		Text:        "Выбери способ оплаты, чтобы оформить подписку 👇",
+		ReplyMarkup: &t.InlineKeyboardMarkup{InlineKeyboard: buttons},
 	})
 }

@@ -5,6 +5,7 @@ import (
 	"bot/src/online/cron"
 	"bot/src/online/db"
 	"bot/src/online/handler"
+	"bot/src/online/payment"
 	"bot/src/online/scene"
 	"bot/src/utils"
 	"fmt"
@@ -21,11 +22,13 @@ func main() {
 	defer connection.Close(bot.Ctx)
 	scene.RegisterScenes(bot)
 	cron.Cron(bot)
+	payment.StartPaymentServer(bot)
 
 	fmt.Println("Started!")
 	if bot.IsProd {
 		bot.StartWebhook(handler.HandleUpdate)
 	} else {
+		bot.StartHTTPServer()
 		bot.StartLongPulling(handler.HandleUpdates)
 	}
 }

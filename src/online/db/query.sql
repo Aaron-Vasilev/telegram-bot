@@ -72,3 +72,13 @@ WHERE u.is_blocked = false
     SELECT 1 FROM online.subscription s
     WHERE s.user_id = u.id AND s.ends >= CURRENT_DATE
   );
+
+-- name: UpsertCustomerPayment :exec
+INSERT INTO online.customer_payment (provider, external_id, user_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (provider, external_id) DO UPDATE
+SET user_id = EXCLUDED.user_id;
+
+-- name: GetCustomerPayment :one
+SELECT user_id FROM online.customer_payment
+WHERE provider = $1 AND external_id = $2;

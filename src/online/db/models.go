@@ -5,10 +5,60 @@
 package db
 
 import (
+	"database/sql/driver"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type OnlinePaymentProvider string
+
+const (
+	OnlinePaymentProviderProdamus OnlinePaymentProvider = "prodamus"
+)
+
+func (e *OnlinePaymentProvider) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OnlinePaymentProvider(s)
+	case string:
+		*e = OnlinePaymentProvider(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OnlinePaymentProvider: %T", src)
+	}
+	return nil
+}
+
+type NullOnlinePaymentProvider struct {
+	OnlinePaymentProvider OnlinePaymentProvider
+	Valid                 bool // Valid is true if OnlinePaymentProvider is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOnlinePaymentProvider) Scan(value interface{}) error {
+	if value == nil {
+		ns.OnlinePaymentProvider, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OnlinePaymentProvider.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOnlinePaymentProvider) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OnlinePaymentProvider), nil
+}
+
+type OnlineCustomerPayment struct {
+	Provider   OnlinePaymentProvider
+	ExternalID string
+	UserID     int64
+	CreatedAt  pgtype.Timestamp
+}
 
 type OnlineSubscription struct {
 	ID           int32
