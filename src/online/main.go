@@ -9,6 +9,7 @@ import (
 	"bot/src/online/scene"
 	"bot/src/utils"
 	"fmt"
+	"net/http"
 	"os"
 
 	_ "github.com/lib/pq"
@@ -23,6 +24,11 @@ func main() {
 	scene.RegisterScenes(bot)
 	cron.Cron(bot)
 	payment.StartPaymentServer(bot)
+
+	bot.Mux.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("success"))
+	})
 
 	fmt.Println("Started!")
 	if bot.IsProd {
