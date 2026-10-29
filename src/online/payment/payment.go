@@ -4,10 +4,13 @@ import (
 	"bot/src/bot"
 	"bot/src/common"
 	"bot/src/online/db"
+	cnst "bot/src/online/utils/const"
+	"bot/src/utils"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -71,6 +74,8 @@ func webhookHandler(b *bot.Bot, p Provider) http.HandlerFunc {
 		}
 
 		event, err := p.ParseWebhook(r)
+		forwardWebhook(b, p, r, err)
+
 		if errors.Is(err, ErrIgnored) {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -88,6 +93,42 @@ func webhookHandler(b *bot.Bot, p Provider) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// webhookRecipients get a copy of every webhook, including ignored and invalid ones.
+var webhookRecipients = []int64{utils.MY_ID, utils.VIOLETTA_ID}
+
+// Telegram rejects messages longer than 4096 characters.
+const maxMessageLen = 4000
+
+func forwardWebhook(b *bot.Bot, p Provider, r *http.Request, parseErr error) {
+	result := "ok"
+	if parseErr != nil {
+		result = parseErr.Error()
+	}
+
+	// ParseWebhook has already parsed the form, this call only makes sure of it.
+	_ = r.ParseForm()
+	keys := make([]string, 0, len(r.PostForm))
+	for k := range r.PostForm {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "📩 %s webhook (%s)\n\n", p.Name(), result)
+	for _, k := range keys {
+		fmt.Fprintf(&sb, "%s: %s\n", k, strings.Join(r.PostForm[k], ", "))
+	}
+
+	text := sb.String()
+	if runes := []rune(text); len(runes) > maxMessageLen {
+		text = string(runes[:maxMessageLen]) + "…"
+	}
+
+	for _, id := range webhookRecipients {
+		b.SendText(id, text)
 	}
 }
 
@@ -148,7 +189,7 @@ func handleEvent(b *bot.Bot, p Provider, event Event) error {
 	if err == nil {
 		starts = active.Ends
 	}
-	ends := starts.AddDate(0, 1, 0)
+	ends := starts.AddDate(0, 0, cnst.SubscriptionDays)
 
 	if _, err := db.Query.CreateSubscription(b.Ctx, db.CreateSubscriptionParams{
 		UserID:     userId,

@@ -118,11 +118,18 @@ func sendSubscriptionInfo(bot *bot.Bot, userId int64) {
 		return
 	}
 
+	// Manual subscriptions are granted by the admin and never charged.
+	endsLabel := "Следующее списание"
+	if sub.IsManual || !sub.IsActive {
+		endsLabel = "Действует до"
+	}
+
 	bot.SendHTML(
 		userId,
 		fmt.Sprintf(
-			cnst.Subscription+"\nНачалась: <b>%s</b>\nЗакончится: <b>%s</b>",
+			"Подписка 🎟️\nНачалась: <b>%s</b>\n%s: <b>%s</b>",
 			sub.Starts.Format("02-01-06"),
+			endsLabel,
 			sub.Ends.Format("02-01-06"),
 		),
 	)

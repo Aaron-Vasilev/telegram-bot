@@ -1,8 +1,10 @@
 package cnst
 
+const SubscriptionDays = 30
+
 const (
-	Subscription = "Подписка 🎟️"
 	Purchase     = "Оформить подписку 💳"
+	Subscription = "О подписке 🎟️"
 
 	AssignSubscription = "Выдать подписку 🔑"
 
@@ -13,8 +15,8 @@ const (
 
 var (
 	Keyboard = []string{
-		Subscription,
 		Purchase,
+		Subscription,
 	}
 	AdminKeyboard = []string{
 		AssignSubscription,

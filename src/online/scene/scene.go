@@ -72,7 +72,7 @@ func assignSubscription(bot *bot.Bot, u t.Update) {
 		if err == nil {
 			starts = active.Ends
 		}
-		ends := starts.AddDate(0, 1, 0)
+		ends := starts.AddDate(0, 0, cnst.SubscriptionDays)
 
 		_, err = db.Query.CreateSubscription(bot.Ctx, db.CreateSubscriptionParams{
 			UserID:   payerId,
